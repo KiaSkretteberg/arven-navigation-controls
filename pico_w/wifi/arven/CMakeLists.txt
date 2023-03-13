@@ -9,6 +9,3 @@ target_link_libraries(arven
 
 # create map/bin/hex file etc.
 pico_add_extra_outputs(arven)
-
-# add url via pico_set_program_url
-example_auto_set_url(arven)
