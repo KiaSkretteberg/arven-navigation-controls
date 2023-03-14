@@ -27,13 +27,16 @@ pico_add_extra_outputs(arven)
 # add our custom libraries
 add_subdirectory(motors)
 add_subdirectory(atmega)
+add_subdirectory(dwm1001)
 
 target_link_libraries(arven 
     motors
     atmega
+    dwm1001
     pico_stdlib 
     hardware_pwm)
 
 target_include_directories(arven PRIVATE
     "${PROJECT_SOURCE_DIR}/motors"
-    "${PROJECT_SOURCE_DIR}/atmega")
+    "${PROJECT_SOURCE_DIR}/atmega"
+    "${PROJECT_SOURCE_DIR}/dwm1001")
