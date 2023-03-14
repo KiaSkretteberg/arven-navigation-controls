@@ -18,6 +18,8 @@ add_compile_options(-Wall
 
 add_executable(arven
     arven.c
+    motors.c
+    motors.h
 )
 
 pico_enable_stdio_usb(arven 1)
