@@ -18,12 +18,22 @@ add_compile_options(-Wall
 
 add_executable(arven
     arven.c
-    atmega.c atmega.h
-    motors.c motors.h
 )
 
 pico_enable_stdio_usb(arven 1)
 pico_enable_stdio_uart(arven 1)
 pico_add_extra_outputs(arven)
 
-target_link_libraries(arven pico_stdlib hardware_pwm)
+# add our custom libraries
+add_subdirectory(motors)
+add_subdirectory(atmega)
+
+target_link_libraries(arven 
+    motors
+    atmega
+    pico_stdlib 
+    hardware_pwm)
+
+target_include_directories(arven PRIVATE
+    "${PROJECT_SOURCE_DIR}/motors"
+    "${PROJECT_SOURCE_DIR}/atmega")
