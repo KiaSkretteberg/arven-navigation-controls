@@ -83,7 +83,10 @@
 #define ATMEGA_START_BYTE        '$' // indicator of a start frame
 #define ATMEGA_END_BYTE          '^' // indicator of an end frame
 
+// initialize the atmega to run on UART0
 void atmega_init_communication(void);
-void atmega_receive_data();
-void atmega_send_data();
+// ISR that runs when data is received via uart
+void atmega_receive_data(void);
+// Send a request to the atmega via uart
+void atmega_send_data(char * data);
 

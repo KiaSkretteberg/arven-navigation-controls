@@ -35,7 +35,7 @@ void atmega_init_communication(void)
     uart_set_irq_enables(ATMEGA_UART_ID, true, false);
 }
 
-void atmega_receive_data()
+void atmega_receive_data(void)
 {
     char bytesReceived = 0;
     char frame[26] = "";
