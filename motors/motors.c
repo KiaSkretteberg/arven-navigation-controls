@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include "pico/stdlib.h"
 #include "hardware/gpio.h"
 #include "hardware/pwm.h"
 #include "motors.h"
@@ -35,10 +37,10 @@ uint motor_init(Motor motor)
     int dirPin = get_pin(motor, Motor_PinType_Direction); //which pin to use for direction of motor (0/1) [F/R]
     int speedPin = get_pin(motor, Motor_PinType_Speed); // which pin to set for speed (enable) of motor (0-255)
     
-    // set motor direction pin for Motor 1 to Output
+    // set motor direction pin for the motor to Output
     gpio_init(dirPin);
     gpio_set_dir(dirPin, GPIO_OUT);
-    // Set the Enable (speed) pin for Motor 1 to PWM
+    // Set the Enable (speed) pin for the motor to PWM
     gpio_set_function(speedPin, GPIO_FUNC_PWM);
     // Find out which PWM slice motor is connected to, and save it for later reference
     motor_slices[motor] = pwm_gpio_to_slice_num(speedPin);
@@ -76,10 +78,12 @@ void set_motor_speed(Motor motor, char speed)
 {
     if (speed > MOTOR_PERIOD)
         speed = MOTOR_PERIOD;
+
+    // Set period
     //TODO: Do something with speed to do with period and duty
+    pwm_set_wrap(motor_slices[motor], MOTOR_PERIOD);
+    // set duty
     pwm_set_gpio_level(get_pin(motor, Motor_PinType_Speed), speed);
-    // Set duty for channel B (motor enable is always channel B): output high for one cycle before dropping
-    pwm_set_chan_level(motor_slices[motor], PWM_CHAN_B, speed);
     // Set the PWM running (turn on the motor, at the set speed)
     pwm_set_enabled(motor_slices[motor], true);
 }
