@@ -1,4 +1,4 @@
-/* Communication with the Atmega328P via UART0
+/* Communication with the Atmega328P via UART0 (pins 1 and 2)
     Utilizing Frames of the following structure:
     $FFFFF1FFFF1FFFF1FFFFA3FF1^ 
 
@@ -66,6 +66,22 @@
     Encoders
     ??
 */
+
+// We are using pins 0 and 1, but see the GPIO function select table in the
+// datasheet for information on which other pins can be used.
+#define ATMEGA_TX_PIN 0 // GPIO pin 0 [pin 1]
+#define ATMEGA_RX_PIN 1 // GPIO pin 1 [pin 2]
+
+#define ATMEGA_UART_ID   uart0
+#define ATMEGA_BAUD_RATE 115200
+#define ATMEGA_DATA_BITS 8
+#define ATMEGA_STOP_BITS 1
+#define ATMEGA_PARITY    UART_PARITY_NONE
+
+#define ATMEGA_MAX_FRAMES_STORED 5   // max number of frames that can be stored before we start overwriting the oldest ones
+#define ATMEGA_FRAME_LENGTH      25  // not inclusive of start/end bytes
+#define ATMEGA_START_BYTE        '$' // indicator of a start frame
+#define ATMEGA_END_BYTE          '^' // indicator of an end frame
 
 void atmega_init_communication(void);
 void atmega_receive_data();
