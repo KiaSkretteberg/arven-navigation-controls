@@ -14,7 +14,7 @@
 /* Header Implementation                                                */
 /************************************************************************/
 
-float Weight_DetermineWeight(void)
+float Weight_CalculateMass(void)
 {
 	float voltage = measureVoltage();
 	// 1000.0 is the conversion factor for kg to g
@@ -34,9 +34,9 @@ Weight_LoadState Weight_CheckForLoad(void)
 	return volt > Weight_MINV ? Weight_LoadPresent : Weight_LoadNotPresent;
 }
 
-Weight_WeightChange Weight_CheckForWeightChange(float oldWeight, float doseWeight)
+Weight_Change Weight_CheckForChange(float oldWeight, float doseWeight)
 {
-	Weight_WeightChange change;
+	Weight_Change change;
 	float newWeight = Weight_DetermineWeight();
 	float weightDifference = oldWeight - newWeight;
 	

@@ -6,7 +6,7 @@
  * Created: 2023-03-14
  * Author: Kia Skretteberg
  */
- #include "encoders.h"
+#include "encoders.h"
 
 /************************************************************************/
 /* Local Definitions (private functions)                                */

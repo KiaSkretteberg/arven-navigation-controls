@@ -14,28 +14,21 @@
 // Calculate the distance (in cm) of the sound pulse from the duration (in us)
 float calculateDistance(long duration);
  
- 
 /************************************************************************/
 /* Global Variables                                                     */
 /************************************************************************/
-
-volatile long echoTimeStart = 0;
-volatile long echoTimeEnd = 0;
-volatile Ultrasonic_Device activeDevice = Ultrasonic_None;
 
  
 /************************************************************************/
 /* Header Implementation                                                */
 /************************************************************************/
  
-int Ultrasonic_CheckForObstacle(Ultrasonic_Device device, float distance)
+int Ultrasonic_CheckForObstacle(long duration)
 {
-	float dDistance = calculateDistance(device);
+	float dDistance = calculateDistance(duration);
 	 
 	return dDistance >= 0 && dDistance < distance ? 1 : 0;
 }
-
-
 
 /************************************************************************/
 /* Local  Implementation                                                */

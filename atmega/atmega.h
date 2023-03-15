@@ -8,11 +8,11 @@
     Indication of which of the 8 sensors have changed.
     The values that are indicated as being modified are the next 7 segments (segment 9 is excluded since it is just a battery indicator)
 
-   * -------------------------------------------------------------------------------------------------
-   * |    b7    |    b6    |     b5    |    b4    |     b3     |      b2     |     b1      |    b0    |
-   * -------------------------------------------------------------------------------------------------
-   * |  IR Left | IR Right |  US Left  |  US Ctr  |  US Right  |  Bump Left  |  Bump Left  |  Weight  |
-   * -------------------------------------------------------------------------------------------------
+   * ---------------------------------------------------------------------------------------------
+   * |    b7    |    b6    |     b5    |    b4    |     b3     |   b2    |    b1    |     b0     |
+   * ---------------------------------------------------------------------------------------------
+   * |  IR Left | IR Right |  US Left  |  US Ctr  |  US Right  |  Bumps  |  Weight  |  Encoders  |
+   * ---------------------------------------------------------------------------------------------
 
     Segment 2: (2 bytes) 
     Left IR Sensor
@@ -61,6 +61,10 @@
 
     Segment 9: (1 or 3 bytes)
     Battery level (if 1 byte, is 0/1; if 3 bytes, is an AtoD value similar to segment 8)
+
+    Segment 10: (??)
+    Encoders
+    ??
 */
 
 void atmega_init_communication(void);

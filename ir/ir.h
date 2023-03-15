@@ -9,9 +9,8 @@
 
 typedef enum
 {
-	IR_L = 0, // left IR sensor	-- I2C addr 0x30
-	IR_R = 1, // center IR sensor	-- I2C addr 0x31
-	IR_None = 10
+	IR_L = 0, // segment 2 (2 bytes)
+	IR_R = 1, // segment 3 (2 bytes)
 } IR_Device;
 
 // Checks if the sensor no longer detects ground beneath it (1 if no ground ==> drop, 0 if ground ==> no drop)

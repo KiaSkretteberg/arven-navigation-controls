@@ -16,7 +16,7 @@ typedef enum
 	Weight_NoChange,
 	Weight_SmallChange,
 	Weight_LargeChange
-} Weight_WeightChange;
+} Weight_Change;
 
 typedef enum
 {
@@ -25,11 +25,11 @@ typedef enum
 } Weight_LoadState;
 
 // Determine the weight (in grams) that is being measured by the Weight
-float Weight_DetermineWeight(void);
+float Weight_CalculateMass(void);
 
 // Check if a load is currently being measured by the Weight
 Weight_LoadState Weight_CheckForLoad(void);
 
 // Check if the weight being measured by the Weight changed compared to previous weight
 // and how it changed in relation to the weight of a dose (was it roughly a dose [smallchange], or much more [largechange])
-Weight_WeightChange Weight_CheckForWeightChange(float oldWeight, float doseWeight);
+Weight_Change Weight_CheckForChange(float oldWeight, float doseWeight);
