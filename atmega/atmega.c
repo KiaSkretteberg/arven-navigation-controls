@@ -3,7 +3,7 @@
 #include "hardware/uart.h"
 #include "atmega.h"
 
-volatile char frames[ATMEGA_MAX_FRAMES_STORED][ATMEGA_FRAME_LENGTH + 1] = {""};
+volatile struct AtmegaFrame frames[ATMEGA_MAX_FRAMES_STORED];
 volatile int current_frame_index = 0;
 
 void atmega_init_communication(void)
@@ -38,7 +38,7 @@ void atmega_init_communication(void)
 void atmega_receive_data(void)
 {
     char bytesReceived = 0;
-    char frame[26] = "";
+    struct AtmegaFrame frame;
     int frame_begin = 0; // flag indicating we saw the begin of a frame
     int frame_end = 0; // flag indicating we saw the end of a frame
 
@@ -50,6 +50,7 @@ void atmega_receive_data(void)
         if(ch == ATMEGA_START_BYTE && !frame_begin)
         {
             frame_begin = 1;
+            frames[current_frame_index] = frame;
         }
         // end frame seen after a start frame is seen and we got the expected number of bytes
         else if(ch == ATMEGA_END_BYTE && frame_begin && bytesReceived == ATMEGA_FRAME_LENGTH)
@@ -65,7 +66,7 @@ void atmega_receive_data(void)
         // data received after begin frame seen
         else if(frame_begin && bytesReceived < ATMEGA_FRAME_LENGTH) 
         {
-            *frames[current_frame_index] += ch;
+            frames[current_frame_index] = atmega_read_byte_into_frame(frames[current_frame_index], bytesReceived, ch);
             ++bytesReceived;
         }
         // some sort of error (frame_begin not seen, frame_end seen too early, frame_end seen before frame_begin)
@@ -80,4 +81,33 @@ void atmega_receive_data(void)
 void atmega_send_data(char * data)
 {
     uart_puts(ATMEGA_UART_ID, data);
+}
+
+struct AtmegaFrame atmega_retrieve_frame(void)
+{
+    return frames[current_frame_index];
+}
+
+// private
+struct AtmegaFrame atmega_read_byte_into_frame(struct AtmegaFrame frame, char byteCount, char c) 
+{
+    if(byteCount < 2) {
+        *frame.IR_L += c;
+    } else if (byteCount < 4) {
+        *frame.IR_R += c;
+    } else if (byteCount < 9) {
+        *frame.Ultrasonic_L += c;
+    } else if (byteCount < 14) {
+        *frame.Ultrasonic_C += c;
+    } else if (byteCount < 19) {
+        *frame.Ultrasonic_R += c;
+    } else if (byteCount < 20) {
+        *frame.Bumps_L_R += c;
+    } else if (byteCount < 23) {
+        *frame.Weight += c;
+    } else if (byteCount < 24) {
+        *frame.Battery += c;
+    }
+
+    return frame;
 }

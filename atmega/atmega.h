@@ -83,10 +83,23 @@
 #define ATMEGA_START_BYTE        '$' // indicator of a start frame
 #define ATMEGA_END_BYTE          '^' // indicator of an end frame
 
+struct AtmegaFrame {
+    char IR_L[3];
+    char IR_R[3];
+    char Ultrasonic_L[6];
+    char Ultrasonic_C[6];
+    char Ultrasonic_R[6];
+    char Bumps_L_R[2];
+    char Weight[4];
+    char Battery[2];
+};
+
 // initialize the atmega to run on UART0
 void atmega_init_communication(void);
 // ISR that runs when data is received via uart
 void atmega_receive_data(void);
+// returns the current frame stored
+struct AtmegaFrame atmega_retrieve_frame(void);
 // Send a request to the atmega via uart
 void atmega_send_data(char * data);
 
