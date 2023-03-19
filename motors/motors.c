@@ -37,6 +37,7 @@ int get_pin(Motor motor, MotorPinType pinType);
 
 /// @brief allows setting a specific motor to specified frequency and duty.
 /// Code adopted from https://www.i-programmer.info/programming/hardware/14849-the-pico-in-c-basic-pwm.html?start=2
+// and mp_machine_pwm_freq_set from https://github.com/micropython/micropython/blob/master/ports/rp2/machine_pwm.c 
 /// @param motor 
 /// @param freq 
 /// @param duty 
@@ -158,7 +159,7 @@ int get_pin(Motor motor, MotorPinType pinType)
 }
 
 /*
-65535 is max value of divisor (65536 is max possible values)
+65535 is max value of divisor (65536 possible values)
 16 bit
 8 bit integer, 4 bit fractional (where are the other 4 bits?!?!?!)
 255 is max for the 8 bit integer (256 possible values)

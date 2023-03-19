@@ -119,10 +119,10 @@
 
 #define ATMEGA_MOTOR_FL_Direction 0b00100000
 #define ATMEGA_MOTOR_FR_Direction 0b00010000
-#define ATMEGA_MOTOR_ML_Direction 0b00001000
-#define ATMEGA_MOTOR_MR_Direction 0b00000100
-#define ATMEGA_MOTOR_BL_Direction 0b00000010
-#define ATMEGA_MOTOR_BR_Direction 0b00000001
+// #define ATMEGA_MOTOR_ML_Direction 0b00001000
+// #define ATMEGA_MOTOR_MR_Direction 0b00000100
+// #define ATMEGA_MOTOR_BL_Direction 0b00000010
+// #define ATMEGA_MOTOR_BR_Direction 0b00000001
 
 struct AtmegaFrame {
     char IR_L[3];
@@ -136,10 +136,10 @@ struct AtmegaFrame {
     char Motor_Directions;
     char Motor_Speed_FL[2];
     char Motor_Speed_FR[2];
-    char Motor_Speed_ML[2];
-    char Motor_Speed_MR[2];
-    char Motor_Speed_BL[2];
-    char Motor_Speed_BR[2];
+    // char Motor_Speed_ML[2];
+    // char Motor_Speed_MR[2];
+    // char Motor_Speed_BL[2];
+    // char Motor_Speed_BR[2];
 };
 
 struct SensorValues {
@@ -163,17 +163,17 @@ struct SensorValues {
     bool Motor_FR_Direction;    // 1 if forward
     char Motor_FR_Speed;        // measured in RPM
 
-    bool Motor_ML_Direction;    // 1 if forward
-    char Motor_ML_Speed;        // measured in RPM
+    // bool Motor_ML_Direction;    // 1 if forward
+    // char Motor_ML_Speed;        // measured in RPM
 
-    bool Motor_MR_Direction;    // 1 if forward
-    char Motor_MR_Speed;        // measured in RPM
+    // bool Motor_MR_Direction;    // 1 if forward
+    // char Motor_MR_Speed;        // measured in RPM
 
-    bool Motor_BL_Direction;    // 1 if forward
-    char Motor_BL_Speed;        // measured in RPM
+    // bool Motor_BL_Direction;    // 1 if forward
+    // char Motor_BL_Speed;        // measured in RPM
 
-    bool Motor_BR_Direction;    // 1 if forward
-    char Motor_BR_Speed;        // measured in RPM
+    // bool Motor_BR_Direction;    // 1 if forward
+    // char Motor_BR_Speed;        // measured in RPM
 };
 
 // initialize the atmega to run on UART0

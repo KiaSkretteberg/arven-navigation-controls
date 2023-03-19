@@ -145,17 +145,17 @@ struct SensorValues atmega_parse_frame(struct AtmegaFrame frame)
     // check the appropriate bits from the m_directions value for 0/1
     sv.Motor_FL_Direction = m_directions & ATMEGA_MOTOR_FL_Direction;
     sv.Motor_FR_Direction = m_directions & ATMEGA_MOTOR_FR_Direction;
-    sv.Motor_ML_Direction = m_directions & ATMEGA_MOTOR_ML_Direction;
-    sv.Motor_MR_Direction = m_directions & ATMEGA_MOTOR_MR_Direction;
-    sv.Motor_BL_Direction = m_directions & ATMEGA_MOTOR_BL_Direction;
-    sv.Motor_BR_Direction = m_directions & ATMEGA_MOTOR_BR_Direction;
+    // sv.Motor_ML_Direction = m_directions & ATMEGA_MOTOR_ML_Direction;
+    // sv.Motor_MR_Direction = m_directions & ATMEGA_MOTOR_MR_Direction;
+    // sv.Motor_BL_Direction = m_directions & ATMEGA_MOTOR_BL_Direction;
+    // sv.Motor_BR_Direction = m_directions & ATMEGA_MOTOR_BR_Direction;
 
     sv.Motor_FL_Speed = convert_bytes_string_to_hex(&frame.Motor_Speed_FL, 2);
     sv.Motor_FR_Speed = convert_bytes_string_to_hex(&frame.Motor_Speed_FR, 2);
-    sv.Motor_ML_Speed = convert_bytes_string_to_hex(&frame.Motor_Speed_ML, 2);
-    sv.Motor_MR_Speed = convert_bytes_string_to_hex(&frame.Motor_Speed_MR, 2);
-    sv.Motor_BL_Speed = convert_bytes_string_to_hex(&frame.Motor_Speed_BL, 2);
-    sv.Motor_BR_Speed = convert_bytes_string_to_hex(&frame.Motor_Speed_BR, 2);
+    // sv.Motor_ML_Speed = convert_bytes_string_to_hex(&frame.Motor_Speed_ML, 2);
+    // sv.Motor_MR_Speed = convert_bytes_string_to_hex(&frame.Motor_Speed_MR, 2);
+    // sv.Motor_BL_Speed = convert_bytes_string_to_hex(&frame.Motor_Speed_BL, 2);
+    // sv.Motor_BR_Speed = convert_bytes_string_to_hex(&frame.Motor_Speed_BR, 2);
 
     // check to see if the converted value is 0 or 1
     sv.Battery_Low = convert_string_to_hex(frame.Battery) & 1;
@@ -187,14 +187,14 @@ struct AtmegaFrame atmega_read_byte_into_frame(struct AtmegaFrame frame, char by
         *frame.Motor_Speed_FL += c;
     } else if (byteCount < 29) {
         *frame.Motor_Speed_FR += c;
-    } else if (byteCount < 31) {
-        *frame.Motor_Speed_ML += c;
-    } else if (byteCount < 33) {
-        *frame.Motor_Speed_MR += c;
-    } else if (byteCount < 35) {
-        *frame.Motor_Speed_BL += c;
-    } else if (byteCount < 37) {
-        *frame.Motor_Speed_BR += c;
+    // } else if (byteCount < 31) {
+    //     *frame.Motor_Speed_ML += c;
+    // } else if (byteCount < 33) {
+    //     *frame.Motor_Speed_MR += c;
+    // } else if (byteCount < 35) {
+    //     *frame.Motor_Speed_BL += c;
+    // } else if (byteCount < 37) {
+    //     *frame.Motor_Speed_BR += c;
     }
 
     return frame;
