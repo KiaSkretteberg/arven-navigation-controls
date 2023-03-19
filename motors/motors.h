@@ -14,7 +14,8 @@
 #define EN1 3   // GPIO 3
 */
 
-#define MOTOR_PERIOD 3 // TODO: Determine a good period, # of cycles includes 0
+#define WHEEL_DIAMETER 0.065 // in m
+#define MAX_RPM 140 // from datasheet for 36GP-555-27-EN motors, max rated torque speed
 
 /** \brief Selector for specific motor:
  *  \ingroup motors
@@ -44,5 +45,5 @@ typedef enum {
 void motor_init_all(void);
 uint motor_init(Motor motor);
 void motor_stop(Motor motor);
-void motor_forward(Motor motor, char speed);
-void motor_reverse(Motor motor, char speed);
+void motor_forward(Motor motor, float speed);
+void motor_reverse(Motor motor, float speed);

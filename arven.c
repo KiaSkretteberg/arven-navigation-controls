@@ -24,9 +24,11 @@ int main() {
 
     while (true) {
         if(gpio_get(LED_PIN)) {
-            motor_reverse(Motor_FR, 1);
+            // 10 cm/s, always back up slower
+            motor_reverse(Motor_FR, 10);
         } else {
-            motor_forward(Motor_FR, 3);
+            // 20 cm/s, full steam ahead!
+            motor_forward(Motor_FR, 20);
         }
         // gpio_put(LED_PIN, 1);
         // sleep_ms(250);
