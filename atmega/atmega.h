@@ -2,7 +2,7 @@
     Utilizing Frames of the following structure:
     $FFFFF1FFFF1FFFF1FFFFA3FF1^ 
 
-    The above is broken up into 9 segments varying in the number of bytes that represent them.
+    The above is broken up into 16 segments varying in the number of (string) bytes that represent them.
 
     Segment 1: (1 byte)
     Indication of which of the 8 sensors have changed.
@@ -40,7 +40,7 @@
     Segment 7: (1 byte)
     Left and Right Bump Sensor
     A hex value representing 2 bits with b0 being the right sensor, and b1 being the left sensor.
-    1 means there is an obstacle. 0 means there is no obstacle.
+    1 means there is an obstacle. 0 means there is no obstacle. b1 = Left, b2 = right
 
    * ------------------------------------------
    * |    Hex Value    |    b1    |     b0    |
@@ -62,9 +62,40 @@
     Segment 9: (1 or 3 bytes)
     Battery level (if 1 byte, is 0/1; if 3 bytes, is an AtoD value similar to segment 8)
 
-    Segment 10: (??)
-    Encoders
-    ??
+    Segment 10: (1 byte)
+    Direction of Motors (from encoders)
+    Each motor is represented by a single bit of 0 or 1 indicated below, 
+    where 1 indicates forward, 0 is backwards
+
+    * ----------------------------------------------------------------------------------------
+    * |   b7  |  b6   |   b5    |    b4     |     b3     |     b2     |    b1    |     b0    |
+    * ----------------------------------------------------------------------------------------
+    * |     unused    | Front L |  Front R  |  Middle L  |  Middle R  |  Back L  |  Back  R  |
+    * ----------------------------------------------------------------------------------------
+
+    Segment 11: (2 bytes)
+    Speed of Front Left Motor (from encoders)
+    Measured in RPMs, max possible value is 255, though it should never be above 170
+
+    Segment 12: (2 byte)
+    Speed of Front Right Motor (from encoders)
+    Measured in RPMs, max possible value is 255, though it should never be above 170
+
+    Segment 13: (2 byte)
+    Speed of Middle Left Motor (from encoders)
+    Measured in RPMs, max possible value is 255, though it should never be above 170
+
+    Segment 14: (2 byte)
+    Speed of Middle Right Motor (from encoders)
+    Measured in RPMs, max possible value is 255, though it should never be above 170
+
+    Segment 15: (2 byte)
+    Speed of Back Left Motor (from encoders)
+    Measured in RPMs, max possible value is 255, though it should never be above 170
+
+    Segment 16: (2 byte)
+    Speed of Back Left Motor (from encoders)
+    Measured in RPMs, max possible value is 255, though it should never be above 170
 */
 
 // We are using pins 0 and 1, but see the GPIO function select table in the
@@ -83,23 +114,74 @@
 #define ATMEGA_START_BYTE        '$' // indicator of a start frame
 #define ATMEGA_END_BYTE          '^' // indicator of an end frame
 
+#define ATMEGA_BUMP_L 0b10
+#define ATMEGA_BUMP_R 0b01
+
+#define ATMEGA_MOTOR_FL_Direction 0b00100000
+#define ATMEGA_MOTOR_FR_Direction 0b00010000
+#define ATMEGA_MOTOR_ML_Direction 0b00001000
+#define ATMEGA_MOTOR_MR_Direction 0b00000100
+#define ATMEGA_MOTOR_BL_Direction 0b00000010
+#define ATMEGA_MOTOR_BR_Direction 0b00000001
+
 struct AtmegaFrame {
     char IR_L[3];
     char IR_R[3];
     char Ultrasonic_L[6];
     char Ultrasonic_C[6];
     char Ultrasonic_R[6];
-    char Bumps_L_R[2];
+    char Bumps_L_R;
     char Weight[4];
-    char Battery[2];
+    char Battery;
+    char Motor_Directions;
+    char Motor_Speed_FL[2];
+    char Motor_Speed_FR[2];
+    char Motor_Speed_ML[2];
+    char Motor_Speed_MR[2];
+    char Motor_Speed_BL[2];
+    char Motor_Speed_BR[2];
+};
+
+struct SensorValues {
+    char IR_L_Distance;         //measured in mm
+    char IR_R_Distance;         //measured in mm
+
+    long Ultrasonic_L_Duration; //measured in us
+    long Ultrasonic_C_Duration; //measured in us
+    long Ultrasonic_R_Duration; //measured in us
+
+    bool Bump_L;                // 1 if there's an object
+    bool Bump_R;                // 1 if there's an object
+
+    int  Weight;                // AD value measured (5V ref)
+
+    bool Battery_Low;           // 1 if battery low
+
+    bool Motor_FL_Direction;    // 1 if forward
+    char Motor_FL_Speed;        // measured in RPM
+
+    bool Motor_FR_Direction;    // 1 if forward
+    char Motor_FR_Speed;        // measured in RPM
+
+    bool Motor_ML_Direction;    // 1 if forward
+    char Motor_ML_Speed;        // measured in RPM
+
+    bool Motor_MR_Direction;    // 1 if forward
+    char Motor_MR_Speed;        // measured in RPM
+
+    bool Motor_BL_Direction;    // 1 if forward
+    char Motor_BL_Speed;        // measured in RPM
+
+    bool Motor_BR_Direction;    // 1 if forward
+    char Motor_BR_Speed;        // measured in RPM
 };
 
 // initialize the atmega to run on UART0
 void atmega_init_communication(void);
 // ISR that runs when data is received via uart
 void atmega_receive_data(void);
-// returns the current frame stored
-struct AtmegaFrame atmega_retrieve_frame(void);
+// returns the current sensor values stored
+struct SensorValues atmega_retrieve_sensor_values(void);
 // Send a request to the atmega via uart
 void atmega_send_data(char * data);
 
