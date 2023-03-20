@@ -1,13 +1,16 @@
+/*
+ * motors.c
+ *
+ * Created: 2023-03-20
+ * Author: Kia Skretteberg
+ */
+
 #include <stdio.h>
 #include "pico/stdlib.h"
 #include "hardware/gpio.h"
 #include "hardware/pwm.h"
 #include "motors.h"
 #include "math.h"
-
-// The list of slice for the motors where the key is the motor number (enum), and the value is the slice number
-volatile uint motor_slices[6];
-volatile uint32_t period;
 
 /************************************************************************/
 /* Local Definitions (private functions)                                */
@@ -42,7 +45,14 @@ int get_pin(Motor motor, MotorPinType pinType);
 /// @param freq 
 /// @param duty 
 uint32_t set_pwm_frequency_duty(Motor motor, uint32_t freq, int duty);
+ 
+/************************************************************************/
+/* Global Variables                                                     */
+/************************************************************************/
 
+// The list of slice for the motors where the key is the motor number (enum), and the value is the slice number
+volatile uint motor_slices[6];
+volatile uint32_t period;
 
 /************************************************************************/
 /* Header Implementation                                                */

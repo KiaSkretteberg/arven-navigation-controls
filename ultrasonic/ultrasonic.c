@@ -1,6 +1,5 @@
 /*
  * ultrasonic.c
- * Ultrasonic Sensor(s) Used for object detection/obstacle avoidance
  * 
  * Created: 2023-03-14
  * Author: Kia Skretteberg

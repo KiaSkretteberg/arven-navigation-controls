@@ -1,14 +1,19 @@
+/*
+ * atmega.c
+ *
+ * Created: 2023-03-20
+ *  Author: Kia Skretteberg
+ */
+ 
 #include <stdio.h>
 #include "pico/stdlib.h"
 #include "hardware/uart.h"
 #include "atmega.h"
-
-volatile struct AtmegaFrame frames[ATMEGA_MAX_FRAMES_STORED];
-volatile int current_frame_index = 0;
-
 /************************************************************************/
 /* Local Definitions (private functions)                                */
 /************************************************************************/
+
+struct AtmegaFrame atmega_retrieve_frame(void);
 
 // returns the parsed struct value of the actual sensor values represented by the frame
 struct SensorValues atmega_parse_frame(struct AtmegaFrame);
@@ -19,13 +24,20 @@ struct AtmegaFrame atmega_read_byte_into_frame(struct AtmegaFrame frame, char by
 // converts the passed in byte array (string) to the actual hex values they represent
 // e.g. if bytes = ['a','f','2']
 // the returned value will be 0xAF2
-long convert_bytes_string_to_hex(char * bytes, char countBytes);
+long convert_bytes_string_to_hex(char * bytes, char startByteIndex);
 
 // converts a single string character to it's hex value that it represents (0-F)
 // returns -1 if the value can't be converted to 0-F
 // solution adapted from https://stackoverflow.com/questions/33982870/how-to-convert-char-array-to-hexadecimal
 char convert_string_to_hex(char c);
 
+ 
+/************************************************************************/
+/* Global Variables                                                     */
+/************************************************************************/
+
+volatile struct AtmegaFrame frames[ATMEGA_MAX_FRAMES_STORED];
+volatile int current_frame_index = 0;
 
 /************************************************************************/
 /* Header Implementation                                                */
@@ -129,18 +141,18 @@ struct SensorValues atmega_parse_frame(struct AtmegaFrame frame)
     char m_directions = convert_string_to_hex(frame.Motor_Directions);
 
     // The bytes come in opposite order (MSB to LSB), so we need to ensure they map back properly
-    sv.IR_L_Distance = convert_bytes_string_to_hex(&frame.IR_L, 2);
-    sv.IR_R_Distance = convert_bytes_string_to_hex(&frame.IR_R, 2);
+    sv.IR_L_Distance = convert_bytes_string_to_hex(&frame.IR_L, 1);
+    sv.IR_R_Distance = convert_bytes_string_to_hex(&frame.IR_R, 1);
 
-    sv.Ultrasonic_L_Duration = convert_bytes_string_to_hex(&frame.Ultrasonic_L, 5);
-    sv.Ultrasonic_C_Duration = convert_bytes_string_to_hex(&frame.Ultrasonic_C, 5);
-    sv.Ultrasonic_R_Duration = convert_bytes_string_to_hex(&frame.Ultrasonic_R, 5);
+    sv.Ultrasonic_L_Duration = convert_bytes_string_to_hex(&frame.Ultrasonic_L, 4);
+    sv.Ultrasonic_C_Duration = convert_bytes_string_to_hex(&frame.Ultrasonic_C, 4);
+    sv.Ultrasonic_R_Duration = convert_bytes_string_to_hex(&frame.Ultrasonic_R, 4);
 
     // check the appropriate bits from the bumps value for 0/1
     sv.Bump_L = bumps & ATMEGA_BUMP_L;
     sv.Bump_R = bumps & ATMEGA_BUMP_R;
 
-    sv.Weight = convert_byte_string_to_hex(&frame.Weight, 3);
+    sv.Weight = convert_byte_string_to_hex(&frame.Weight, 2);
 
     // check the appropriate bits from the m_directions value for 0/1
     sv.Motor_FL_Direction = m_directions & ATMEGA_MOTOR_FL_Direction;
@@ -150,12 +162,12 @@ struct SensorValues atmega_parse_frame(struct AtmegaFrame frame)
     // sv.Motor_BL_Direction = m_directions & ATMEGA_MOTOR_BL_Direction;
     // sv.Motor_BR_Direction = m_directions & ATMEGA_MOTOR_BR_Direction;
 
-    sv.Motor_FL_Speed = convert_bytes_string_to_hex(&frame.Motor_Speed_FL, 2);
-    sv.Motor_FR_Speed = convert_bytes_string_to_hex(&frame.Motor_Speed_FR, 2);
-    // sv.Motor_ML_Speed = convert_bytes_string_to_hex(&frame.Motor_Speed_ML, 2);
-    // sv.Motor_MR_Speed = convert_bytes_string_to_hex(&frame.Motor_Speed_MR, 2);
-    // sv.Motor_BL_Speed = convert_bytes_string_to_hex(&frame.Motor_Speed_BL, 2);
-    // sv.Motor_BR_Speed = convert_bytes_string_to_hex(&frame.Motor_Speed_BR, 2);
+    sv.Motor_FL_Speed = convert_bytes_string_to_hex(&frame.Motor_Speed_FL, 1);
+    sv.Motor_FR_Speed = convert_bytes_string_to_hex(&frame.Motor_Speed_FR, 1);
+    // sv.Motor_ML_Speed = convert_bytes_string_to_hex(&frame.Motor_Speed_ML, 1);
+    // sv.Motor_MR_Speed = convert_bytes_string_to_hex(&frame.Motor_Speed_MR, 1);
+    // sv.Motor_BL_Speed = convert_bytes_string_to_hex(&frame.Motor_Speed_BL, 1);
+    // sv.Motor_BR_Speed = convert_bytes_string_to_hex(&frame.Motor_Speed_BR, 1);
 
     // check to see if the converted value is 0 or 1
     sv.Battery_Low = convert_string_to_hex(frame.Battery) & 1;
@@ -200,18 +212,19 @@ struct AtmegaFrame atmega_read_byte_into_frame(struct AtmegaFrame frame, char by
     return frame;
 }
 
-long convert_bytes_string_to_hex(char * bytes, char countBytes)
+long convert_bytes_string_to_hex(char * bytes, char startByteIndex)
 {
+    char byteIndex = startByteIndex;
     long value;
-    while(countBytes >= 0)
+    while(byteIndex >= 0)
     {
         // starting from the MSB, add the current byte value to the return value
         // with the approrpiate position in significance
-        value = *bytes * (countBytes * 16);
+        value = *bytes * (byteIndex > 0 ? (byteIndex * 16) : 1);
         // move to the next byte
         ++*bytes;
         // keep track of the number of bytes we've processed, until we have no bytes left
-        --countBytes;
+        --byteIndex;
     }
 }
 

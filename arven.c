@@ -4,6 +4,7 @@
 #include "pico/binary_info.h"
 #include "hardware/pwm.h"
 #include "motors.h"
+#include "dwm1001.h"
 //#include "pico/cyw43_arch.h"
 
 const uint LED_PIN = 15;
@@ -14,25 +15,20 @@ int main() {
     //     printf("Wi-Fi init failed");
     //     return -1;
     // }
-    //gpio_init(LED_PIN);
-    //gpio_set_dir(LED_PIN, GPIO_OUT);
-
     gpio_init(LED_PIN);
-    gpio_set_dir(LED_PIN, GPIO_IN);
+    gpio_set_dir(LED_PIN, GPIO_OUT);
 
-    motor_init_all();
+    dwm1001_init_communication();
+
+    //motor_init_all();
 
     while (true) {
-        if(gpio_get(LED_PIN)) {
-            // 10 cm/s, always back up slower
-            motor_reverse(Motor_FR, 10);
-        } else {
-            // 20 cm/s, full steam ahead!
-            motor_forward(Motor_FR, 20);
-        }
-        // gpio_put(LED_PIN, 1);
-        // sleep_ms(250);
-        // gpio_put(LED_PIN, 0);
-        // sleep_ms(250);
+        dwm1001_request_position();
+
+        // TODO: Remove. Just for proof of life purposes
+        gpio_put(LED_PIN, 1);
+        sleep_ms(250);
+        gpio_put(LED_PIN, 0);
+        sleep_ms(250);
     }
 }

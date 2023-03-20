@@ -1,3 +1,10 @@
+/*
+ * motors.h
+ * Controls the motors of the robot enabling forward/backward movement (and rotation)
+ *
+ * Created: 2023-03-20
+ * Author: Kia Skretteberg
+ */
 #define M1 2    // GPIO 2 [pin 4]
 #define EN1 3   // GPIO 3 [pin 5]
 

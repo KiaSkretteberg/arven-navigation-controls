@@ -1,6 +1,11 @@
-/* Communication with the Atmega328P via UART0 (pins 1 and 2)
+/* atmega.h
+ * Communication with the Atmega328P via UART0 (pins 1 and 2) 
+ *
+ * Created: 2023-03-20
+ * Author: Kia Skretteberg
+
     Utilizing Frames of the following structure:
-    $FFFFF1FFFF1FFFF1FFFFA3FF1^ 
+    $FFFFF1FFFF1FFFF1FFFFA3FF1FFFFF^ 
 
     The above is broken up into 16 segments varying in the number of (string) bytes that represent them.
 
@@ -81,19 +86,19 @@
     Speed of Front Right Motor (from encoders)
     Measured in RPMs, max possible value is 255, though it should never be above 170
 
-    Segment 13: (2 byte)
+    Segment 13: (2 byte) -- not in use
     Speed of Middle Left Motor (from encoders)
     Measured in RPMs, max possible value is 255, though it should never be above 170
 
-    Segment 14: (2 byte)
+    Segment 14: (2 byte) -- not in use
     Speed of Middle Right Motor (from encoders)
     Measured in RPMs, max possible value is 255, though it should never be above 170
 
-    Segment 15: (2 byte)
+    Segment 15: (2 byte) -- not in use
     Speed of Back Left Motor (from encoders)
     Measured in RPMs, max possible value is 255, though it should never be above 170
 
-    Segment 16: (2 byte)
+    Segment 16: (2 byte) -- not in use
     Speed of Back Left Motor (from encoders)
     Measured in RPMs, max possible value is 255, though it should never be above 170
 */
@@ -110,7 +115,7 @@
 #define ATMEGA_PARITY    UART_PARITY_NONE
 
 #define ATMEGA_MAX_FRAMES_STORED 5   // max number of frames that can be stored before we start overwriting the oldest ones
-#define ATMEGA_FRAME_LENGTH      25  // not inclusive of start/end bytes
+#define ATMEGA_FRAME_LENGTH      30  // not inclusive of start/end bytes
 #define ATMEGA_START_BYTE        '$' // indicator of a start frame
 #define ATMEGA_END_BYTE          '^' // indicator of an end frame
 
@@ -134,12 +139,12 @@ struct AtmegaFrame {
     char Weight[4];
     char Battery;
     char Motor_Directions;
-    char Motor_Speed_FL[2];
-    char Motor_Speed_FR[2];
-    // char Motor_Speed_ML[2];
-    // char Motor_Speed_MR[2];
-    // char Motor_Speed_BL[2];
-    // char Motor_Speed_BR[2];
+    char Motor_Speed_FL[3];
+    char Motor_Speed_FR[3];
+    // char Motor_Speed_ML[3];
+    // char Motor_Speed_MR[3];
+    // char Motor_Speed_BL[3];
+    // char Motor_Speed_BR[3];
 };
 
 struct SensorValues {
@@ -182,6 +187,6 @@ void atmega_init_communication(void);
 void atmega_receive_data(void);
 // returns the current sensor values stored
 struct SensorValues atmega_retrieve_sensor_values(void);
-// Send a request to the atmega via uart
+// Send a request to the atmega via uart. Not currently used
 void atmega_send_data(char * data);
 

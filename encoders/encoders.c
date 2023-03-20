@@ -1,7 +1,5 @@
 /*
  * encoders.c
- * Encoders for Motors
- * Received from atmega. Bytes XX
  *
  * Created: 2023-03-14
  * Author: Kia Skretteberg
