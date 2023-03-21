@@ -29,6 +29,8 @@ void dwm1001_init_communication(void)
 
     // Set our data format
     uart_set_format(DWM1001_UART_ID, DWM1001_DATA_BITS, DWM1001_STOP_BITS, DWM1001_PARITY);
+
+    // TODO: Is the FIFO needed?
 }
 
 void dwm1001_request_position(void)

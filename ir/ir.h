@@ -14,4 +14,4 @@ typedef enum
 } IR_Device;
 
 // Checks if the sensor no longer detects ground beneath it (1 if no ground ==> drop, 0 if ground ==> no drop)
-int IR_CheckForDrop(void);
+bool IR_CheckForDrop(char distance, char expectedDistance);

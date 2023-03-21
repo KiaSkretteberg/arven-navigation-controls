@@ -22,11 +22,11 @@ float calculateDistance(long duration);
 /* Header Implementation                                                */
 /************************************************************************/
  
-int Ultrasonic_CheckForObstacle(long duration)
+bool Ultrasonic_CheckForObstacle(long duration, int range)
 {
-	float dDistance = calculateDistance(duration);
+	float distance = calculateDistance(duration);
 	 
-	return dDistance >= 0 && dDistance < distance ? 1 : 0;
+	return distance >= 0 && distance < range ? 1 : 0;
 }
 
 /************************************************************************/

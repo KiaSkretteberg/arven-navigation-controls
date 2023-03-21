@@ -4,19 +4,23 @@
  * Created: 2023-03-14
  * Author: Kia Skretteberg
  */
+#include <stdio.h>
+#include "pico/stdlib.h"
 #include "weight.h"
 
 /************************************************************************/
 /* Local Definitions (private functions)                                */
 /************************************************************************/
 
+float calculateVoltage(int atodval);
+
 /************************************************************************/
 /* Header Implementation                                                */
 /************************************************************************/
 
-float Weight_CalculateMass(void)
+float Weight_CalculateMass(int atodval)
 {
-	float voltage = measureVoltage();
+	float voltage = calculateVoltage(atodval);
 	// 1000.0 is the conversion factor for kg to g
 	// 9.81 is gravity
 	// g = N * (g/kg) * m/s^2
@@ -27,17 +31,16 @@ float Weight_CalculateMass(void)
 	return weight;
 }
 
-Weight_LoadState Weight_CheckForLoad(void)
-{
-	float volt = measureVoltage();
-	
-	return volt > Weight_MINV ? Weight_LoadPresent : Weight_LoadNotPresent;
+Weight_LoadState Weight_CheckForLoad(int atodval)
+{	
+	float voltage = calculateVoltage(atodval);
+	return voltage > Weight_MINV ? Weight_LoadPresent : Weight_LoadNotPresent;
 }
 
-Weight_Change Weight_CheckForChange(float oldWeight, float doseWeight)
+Weight_Change Weight_CheckForChange(int atodval, float oldWeight, float doseWeight)
 {
 	Weight_Change change;
-	float newWeight = Weight_DetermineWeight();
+	float newWeight = Weight_CalculateMass(atodval);
 	float weightDifference = oldWeight - newWeight;
 	
 	// The weight went up?? Track as no change because it's confusing
@@ -56,3 +59,10 @@ Weight_Change Weight_CheckForChange(float oldWeight, float doseWeight)
 /************************************************************************/
 /* Local  Implementation                                                */
 /************************************************************************/
+
+float calculateVoltage(int atodval)
+{
+    float q = AREF / 1024.0; // 10 bit atod [1024]
+    float voltage = atodval * q; // min val (resting) 0.73V
+	return voltage;
+}

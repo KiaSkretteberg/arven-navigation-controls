@@ -4,7 +4,9 @@
  * Created: 2023-03-14
  * Author: Kia Skretteberg
  */
- #include "ir.h"
+#include <stdio.h>
+#include "pico/stdlib.h"
+#include "ir.h"
 
 /************************************************************************/
 /* Local Definitions (private functions)                                */
@@ -16,9 +18,9 @@
 
 
 // Checks if the sensor no longer detects ground beneath it (1 if no ground ==> drop, 0 if ground ==> no drop)
-int IR_CheckForDrop(void)
+bool IR_CheckForDrop(char distance, char expectedDistance)
 {
-	return 0;
+	return distance > expectedDistance;
 }
 
 /************************************************************************/

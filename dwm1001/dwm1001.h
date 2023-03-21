@@ -5,6 +5,10 @@
  *
  * Created: 2023-03-20
  * Author: Kia Skretteberg
+ * 
+ * TODO: Test to see if we can communicate using the AD2 via UART
+ * TODO: Listen to the uart1 channel rather than a separate channel to see if anything is 
+ * being sent out
  */
 
 // We are using pins 0 and 1, but see the GPIO function select table in the

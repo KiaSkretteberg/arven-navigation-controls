@@ -37,14 +37,6 @@ void set_motor_dir_speed(Motor motor, float speed, MotorDirection dir);
 /// @param pinType What type of pin should be retrieved (direction pin, or speed pin)
 /// @return The pin value to be used in GPIO functions
 int get_pin(Motor motor, MotorPinType pinType);
-
-/// @brief allows setting a specific motor to specified frequency and duty.
-/// Code adopted from https://www.i-programmer.info/programming/hardware/14849-the-pico-in-c-basic-pwm.html?start=2
-// and mp_machine_pwm_freq_set from https://github.com/micropython/micropython/blob/master/ports/rp2/machine_pwm.c 
-/// @param motor 
-/// @param freq 
-/// @param duty 
-uint32_t set_pwm_frequency_duty(Motor motor, uint32_t freq, int duty);
  
 /************************************************************************/
 /* Global Variables                                                     */
@@ -77,9 +69,11 @@ uint motor_init(Motor motor)
     gpio_set_function(speedPin, GPIO_FUNC_PWM);
     // Find out which PWM slice motor is connected to, and save it for later reference
     motor_slices[motor] = pwm_gpio_to_slice_num(speedPin);
-    // Set the frequency based on the MAX_RPM to ensure we can always go the speed we want to
-    // ross suggested 10k as min, 100 is full duty, max speed
-    set_pwm_frequency_duty(motor, 10000, 100); 
+    // Set the period of the signal (duty must be < this value)
+    pwm_set_wrap(motor_slices[motor], MOTOR_PERIOD);
+    
+    // TODO: test and see what frequency we get by default, try to get 1kHz
+    //pwm_set_clkdiv_int_frac(motor_slices[motor], 4096,0);
     return motor_slices[motor];
 }
 
@@ -166,51 +160,4 @@ int get_pin(Motor motor, MotorPinType pinType)
         case Motor_PinType_Speed:
             return speedPin;
     }
-}
-
-/*
-65535 is max value of divisor (65536 possible values)
-16 bit
-8 bit integer, 4 bit fractional (where are the other 4 bits?!?!?!)
-255 is max for the 8 bit integer (256 possible values)
-15 is the max for the 4 bit fraction (16 possible values)
-*/
-uint32_t set_pwm_frequency_duty(Motor motor, uint32_t freq, int duty)
-{   
-    // when divided by 16, gives 1, must be at least 1 (divide by 0 is bad!)
-    const int min_divide = 16;
-    // when divided by 16, gives 256, must be less than this because 255 15/16 is max
-    const int max_divide = 4096;
-    // clock speed of the pico, 125MHz
-    uint32_t clock = 125000000;
-    // pwm is 8.4bit -- meaning accuracy to 1/16th so we need to determine what to divide our clock by in order to get our frequency
-    uint32_t clock_divide = clock / (freq * max_divide) + 
-                            // always round up (add 0 or 1) to ensure we have a divider big enough for our desired frequency
-                            (clock % (freq * max_divide) != 0);
-
-    // if it's less than min, our frequency is too big (too fast), set to biggest
-    if (clock_divide < min_divide)
-        clock_divide = min_divide;
-    // if it's bigger than max, frequency is too small (too slow), set to smallest
-    else if(clock_divide >= max_divide)
-        clock_divide = max_divide - 1;
-
-    // calculate the period of the signal using the clock, frequency, and clock_divide
-    // ???? What? 
-    uint32_t period = clock * 16 / (clock_divide * freq) - 1;
-
-    // Set the value to divide the clock by in order to achieve our frequency
-    // the first chunk is a whole factor of 16 (must be at least 1)
-    // the second chunk is the leftovers when divided by 16, 
-    // e.g. 17 would produce 1, 1
-    //      16 would produce 1, 0
-    //      32 would produce 2, 0
-    //      38 would produce 2, 6
-    pwm_set_clkdiv_int_frac(motor_slices[motor], clock_divide/16,
-                                        clock_divide & 0xF);
-    // Set the period of the signal (duty must be < this value)
-    pwm_set_wrap(motor_slices[motor], period);
-    // Set the duty of the signal
-    pwm_set_gpio_level(get_pin(motor, Motor_PinType_Speed), period * duty / 100);
-    return period;
 }

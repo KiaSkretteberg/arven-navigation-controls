@@ -25,18 +25,30 @@ pico_enable_stdio_uart(arven 1)
 pico_add_extra_outputs(arven)
 
 # add our custom libraries
-add_subdirectory(motors)
 add_subdirectory(atmega)
 add_subdirectory(dwm1001)
+add_subdirectory(encoders)
+add_subdirectory(ir)
+add_subdirectory(motors)
+add_subdirectory(ultrasonic)
+add_subdirectory(weight)
 
 target_link_libraries(arven 
-    motors
     atmega
     dwm1001
+    encoders
+    ir
+    motors
+    ultrasonic
+    weight
     pico_stdlib 
     hardware_pwm)
 
 target_include_directories(arven PRIVATE
-    "${PROJECT_SOURCE_DIR}/motors"
     "${PROJECT_SOURCE_DIR}/atmega"
-    "${PROJECT_SOURCE_DIR}/dwm1001")
+    "${PROJECT_SOURCE_DIR}/dwm1001"
+    "${PROJECT_SOURCE_DIR}/encoders"
+    "${PROJECT_SOURCE_DIR}/ir"
+    "${PROJECT_SOURCE_DIR}/motors"
+    "${PROJECT_SOURCE_DIR}/ultrasonic"
+    "${PROJECT_SOURCE_DIR}/weight")

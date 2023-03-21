@@ -24,12 +24,12 @@ typedef enum
 	Weight_LoadNotPresent
 } Weight_LoadState;
 
-// Determine the weight (in grams) that is being measured by the Weight
-float Weight_CalculateMass(void);
+// Determine the weight (in grams) that the atodval represents
+float Weight_CalculateMass(int atodval);
 
-// Check if a load is currently being measured by the Weight
-Weight_LoadState Weight_CheckForLoad(void);
+// Check if a load is currently being indicated by the atodval measured
+Weight_LoadState Weight_CheckForLoad(int atodval);
 
-// Check if the weight being measured by the Weight changed compared to previous weight
+// Check if the atodval indicates a change in weight compared to previous weight
 // and how it changed in relation to the weight of a dose (was it roughly a dose [smallchange], or much more [largechange])
-Weight_Change Weight_CheckForChange(float oldWeight, float doseWeight);
+Weight_Change Weight_CheckForChange(int atodval, float oldWeight, float doseWeight);

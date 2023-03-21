@@ -147,7 +147,7 @@ struct AtmegaFrame {
     // char Motor_Speed_BR[3];
 };
 
-struct SensorValues {
+struct AtmegaSensorValues {
     char IR_L_Distance;         //measured in mm
     char IR_R_Distance;         //measured in mm
 
@@ -186,7 +186,7 @@ void atmega_init_communication(void);
 // ISR that runs when data is received via uart
 void atmega_receive_data(void);
 // returns the current sensor values stored
-struct SensorValues atmega_retrieve_sensor_values(void);
+struct AtmegaSensorValues atmega_retrieve_sensor_values(void);
 // Send a request to the atmega via uart. Not currently used
 void atmega_send_data(char * data);
 

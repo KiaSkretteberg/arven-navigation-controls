@@ -14,6 +14,6 @@ typedef enum
 	Ultrasonic_R = 2, // segment 6 (5 bytes)
 } Ultrasonic_Device;
 
-// Determine if there's an obstacle within a specified distance, of the specified device, 
+// Determine if there's an obstacle within a specified range based on the duration
 // 0 = no obstacle, 1 = obstacle
-int Ultrasonic_CheckForObstacle(long duration);
+bool Ultrasonic_CheckForObstacle(long duration, int range);

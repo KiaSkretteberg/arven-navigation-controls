@@ -16,7 +16,7 @@
 struct AtmegaFrame atmega_retrieve_frame(void);
 
 // returns the parsed struct value of the actual sensor values represented by the frame
-struct SensorValues atmega_parse_frame(struct AtmegaFrame);
+struct AtmegaSensorValues atmega_parse_frame(struct AtmegaFrame);
 
 // modifies the frame to have the up to date mapping of bytes and returns it
 struct AtmegaFrame atmega_read_byte_into_frame(struct AtmegaFrame frame, char byteCount, char c);
@@ -120,7 +120,7 @@ void atmega_send_data(char * data)
     uart_puts(ATMEGA_UART_ID, data);
 }
 
-struct SensorValues atmega_retrieve_sensor_values(void)
+struct AtmegaSensorValues atmega_retrieve_sensor_values(void)
 {
     return atmega_parse_frame(atmega_retrieve_frame());
 }
@@ -134,9 +134,9 @@ struct AtmegaFrame atmega_retrieve_frame(void)
 /* Local  Implementation                                                */
 /************************************************************************/
 
-struct SensorValues atmega_parse_frame(struct AtmegaFrame frame)
+struct AtmegaSensorValues atmega_parse_frame(struct AtmegaFrame frame)
 {
-    struct SensorValues sv;
+    struct AtmegaSensorValues sv;
     char bumps = convert_string_to_hex(frame.Bumps_L_R);
     char m_directions = convert_string_to_hex(frame.Motor_Directions);
 
