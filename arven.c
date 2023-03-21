@@ -29,6 +29,9 @@ int main() {
 
     motor_init_all();
 
+    
+    motor_forward(Motor_FR, 20);
+
     while (true) {
         // TODO: Remove. Just for proof of life purposes
         gpio_put(LED_PIN, 1);
@@ -36,22 +39,22 @@ int main() {
         gpio_put(LED_PIN, 0);
         sleep_ms(250);
 
-        //retrieve current frame 
-        sensorValues = atmega_retrieve_sensor_values();
+        // //retrieve current frame 
+        // sensorValues = atmega_retrieve_sensor_values();
         
-        Weight_LoadState loadPresent = Weight_CheckForLoad(sensorValues.Weight); 
+        // Weight_LoadState loadPresent = Weight_CheckForLoad(sensorValues.Weight); 
 
-        // checek if there is an obstacle within 10cm
-        bool obstacleLeft = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_L_Duration, 10);
-        bool obstacleCentre = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_C_Duration, 10);
-        bool obstacleRight = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_R_Duration, 10);
+        // // checek if there is an obstacle within 10cm
+        // bool obstacleLeft = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_L_Duration, 10);
+        // bool obstacleCentre = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_C_Duration, 10);
+        // bool obstacleRight = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_R_Duration, 10);
 
-        // Check if the ground (50mm -- 5cm) is still there
-        bool dropImminentLeft = IR_CheckForDrop(sensorValues.IR_L_Distance, 50); 
-        bool dropImminentRight = IR_CheckForDrop(sensorValues.IR_R_Distance, 50);
+        // // Check if the ground (50mm -- 5cm) is still there
+        // bool dropImminentLeft = IR_CheckForDrop(sensorValues.IR_L_Distance, 50); 
+        // bool dropImminentRight = IR_CheckForDrop(sensorValues.IR_R_Distance, 50);
 
-        bool obstacleRear = sensorValues.Bump_L || sensorValues.Bump_R;
+        // bool obstacleRear = sensorValues.Bump_L || sensorValues.Bump_R;
 
-        dwm1001_request_position();
+        // dwm1001_request_position();
     }
 }

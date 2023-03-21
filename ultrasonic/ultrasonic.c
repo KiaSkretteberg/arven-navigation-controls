@@ -4,6 +4,8 @@
  * Created: 2023-03-14
  * Author: Kia Skretteberg
  */
+#include <stdio.h>
+#include "pico/stdlib.h"
 #include "ultrasonic.h"
  
 /************************************************************************/

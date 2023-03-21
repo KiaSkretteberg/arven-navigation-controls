@@ -25,7 +25,7 @@
 
 #define WHEEL_DIAMETER 0.065 // in m
 #define MAX_RPM 140 // from datasheet for 36GP-555-27-EN motors, max rated torque speed
-#define MOTOR_PERIOD 255 // max value as specified by datasheet for motor controllers: DRI0002
+#define MOTOR_PERIOD 254 // max value as specified by datasheet for motor controllers: DRI0002
 
 /** \brief Selector for specific motor:
  *  \ingroup motors
@@ -48,8 +48,7 @@ typedef enum {
  */
 typedef enum {
     Motor_PinType_Direction,
-    Motor_PinType_Speed,
-    Motor_PinType_All
+    Motor_PinType_Speed
 } MotorPinType;
 
 void motor_init_all(void);

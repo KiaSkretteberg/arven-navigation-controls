@@ -44,7 +44,6 @@ int get_pin(Motor motor, MotorPinType pinType);
 
 // The list of slice for the motors where the key is the motor number (enum), and the value is the slice number
 volatile uint motor_slices[6];
-volatile uint32_t period;
 
 /************************************************************************/
 /* Header Implementation                                                */
@@ -58,7 +57,6 @@ void motor_init_all(void)
 
 uint motor_init(Motor motor) 
 {
-    uint motor_slice; // which pwm slice the motor pwm pin is located in
     int dirPin = get_pin(motor, Motor_PinType_Direction); //which pin to use for direction of motor (0/1) [F/R]
     int speedPin = get_pin(motor, Motor_PinType_Speed); // which pin to set for speed (enable) of motor (0-255)
     
@@ -69,11 +67,10 @@ uint motor_init(Motor motor)
     gpio_set_function(speedPin, GPIO_FUNC_PWM);
     // Find out which PWM slice motor is connected to, and save it for later reference
     motor_slices[motor] = pwm_gpio_to_slice_num(speedPin);
-    // Set the period of the signal (duty must be < this value)
-    pwm_set_wrap(motor_slices[motor], MOTOR_PERIOD);
-    
-    // TODO: test and see what frequency we get by default, try to get 1kHz
-    //pwm_set_clkdiv_int_frac(motor_slices[motor], 4096,0);
+    // Set the warp for the signal (effectively the period) -- this will be 1 less than max duty
+    pwm_set_wrap(motor_slices[motor], MOTOR_PERIOD - 1);
+    // set divisor to largest possible (255) in order to get slowest possible frequency (~1.9kHz)
+    pwm_set_clkdiv_int_frac(motor_slices[motor], 255, 0);
     return motor_slices[motor];
 }
 
@@ -119,7 +116,7 @@ int set_motor_speed(Motor motor, float speed)
     }
 
     // Calculate duty as: (rpm/MAX_RPM) * period [but keep numerator large]
-    duty = (rpm * period) / MAX_RPM;
+    duty = (rpm * MOTOR_PERIOD) / MAX_RPM;
 
     // TODO: Need a method to grab current encoder speed in order to maintain speed of motors after having set it?
 
@@ -160,4 +157,5 @@ int get_pin(Motor motor, MotorPinType pinType)
         case Motor_PinType_Speed:
             return speedPin;
     }
+    return -1;
 }
