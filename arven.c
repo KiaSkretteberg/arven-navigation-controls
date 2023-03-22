@@ -44,7 +44,7 @@ int main() {
         
         // Weight_LoadState loadPresent = Weight_CheckForLoad(sensorValues.Weight); 
 
-        // // checek if there is an obstacle within 10cm
+        // // check if there is an obstacle within 10cm
         // bool obstacleLeft = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_L_Duration, 10);
         // bool obstacleCentre = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_C_Duration, 10);
         // bool obstacleRight = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_R_Duration, 10);
@@ -55,6 +55,6 @@ int main() {
 
         // bool obstacleRear = sensorValues.Bump_L || sensorValues.Bump_R;
 
-        // dwm1001_request_position();
+        //dwm1001_request_position();
     }
 }

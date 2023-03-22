@@ -35,10 +35,48 @@ void dwm1001_init_communication(void)
 
 void dwm1001_request_position(void)
 {
-    // dwm_pos_get      see 5.3.2
-    char data[] = { 0x02, 0x00 };
     uint8_t buff[20];
-    uart_puts(DWM1001_UART_ID, data);
+    uint8_t error;
+    // dwm_loc_get      see 5.3.10
+    uart_putc_raw(DWM1001_UART_ID, 0x0C);
+    uart_putc_raw(DWM1001_UART_ID, 0x00);
+
+    //check if there's an error in the command
+    error = read_value(0x40, buff);
+    // get the device's position
+    error = read_value(0x41, buff);
+    // get the position to the anchors (can help in getting home... if home isn't 0,0)
+    error = read_value(0x49, buff);
+}
+
+int read_value(uint8_t expect_type, uint8_t * buff)
+{
+    unsigned char count = 0;
+    // max number of bytes to be read, at most is 253
+    unsigned char maxLength = 253;
     
-    uart_read_blocking(DWM1001_UART_ID, buff, 1);
+    // while there's data to read and we haven't read the end of this value (read all bytes indicated in value)
+    while(uart_is_readable(DWM1001_UART_ID) && count < maxLength + 2)
+    {
+        uint8_t c = uart_getc(DWM1001_UART_ID);
+        ++count;
+        if(count == 1)
+        {
+            // if the type doesn't match the expected type, throw an error!
+            if(c != expect_type)
+                return -1;
+        }
+        // grab the length of how many bytes to receive next
+        else if(count == 2)
+        {
+            maxLength = c;
+        }
+        else
+        {
+            *buff = c;
+            ++buff;
+        }
+    }
+
+    return 0;
 }
