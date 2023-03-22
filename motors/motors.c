@@ -70,7 +70,7 @@ uint motor_init(Motor motor)
     // Set the warp for the signal (effectively the period) -- this will be 1 less than max duty
     pwm_set_wrap(motor_slices[motor], MOTOR_PERIOD - 1);
     // set divisor to largest possible (255) in order to get slowest possible frequency (~1.9kHz)
-    pwm_set_clkdiv_int_frac(motor_slices[motor], 255, 0);
+    pwm_set_clkdiv_int_frac(motor_slices[motor], 27, 0); // calculated as 125k / freq / 16 / 16
     return motor_slices[motor];
 }
 
