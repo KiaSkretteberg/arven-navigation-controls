@@ -2,7 +2,7 @@
 
 - IDE: VS Code
 - Technology: C
-- Hardware: Raspberry Pi Pico
+- Hardware: Raspberry Pi Pico W
 
 This repo is for the code to run on the Arven robot and handle navigation, including motor control.
 
