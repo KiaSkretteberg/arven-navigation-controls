@@ -12,7 +12,6 @@
 //#include "pico/cyw43_arch.h"
 
 const uint LED_PIN = 15;
-
 int main() {
     struct AtmegaSensorValues sensorValues;
 
@@ -56,5 +55,38 @@ int main() {
         // bool obstacleRear = sensorValues.Bump_L || sensorValues.Bump_R;
 
         //dwm1001_request_position();
+
+        //navigation testing stuff
+        
+        // while(obstacleCentre){
+        //     obstacleLeft = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_L_Duration, 10);
+        //     obstacleCentre = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_C_Duration, 10);
+        //     obstacleRight = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_R_Duration, 10);
+        //     //if an object is detected ONLY in front of arven, we would want it to reverse only
+        //     //if an object is detected in front and on the side, but not the back, we would want to reverse
+        //     if((!obstacleLeft && !obstacleRight && !bumpSensors) || (obstacleLeft && obstacleRight && !bumpSensors)){
+        //         //assuming M1 = left, M2 = right
+        //         //based on the xyz from the UWB module, we would set it to reverse left/right
+        //         //so we can go around the object, just setting it to reverse for now though
+        //         motor_reverse(M1, 1); //not sure what speed to set it to?
+        //         motor_reverse(M2, 1);
+        //     }
+        //     //if an object is detected in front of arven and to the left, we would want it to reverse right
+        //     if(obstacleLeft && !obstacleRight && !bumpSensors){
+        //         motor_reverse(M2, 1);
+        //         motor_reverse(M1, 1); //stopping probably isn't what we want, but not sure how we would reverse in a
+        //                               //left/right direction?
+        //     }
+        //     //if an object is detected in front of arven and to the right, we would want it to reverse left
+        //     if(!obstacleLeft && obstacleRight && !bumpSensors){
+        //         motor_reverse(M2, 1);
+        //         motor_reverse(M1, 1);
+        //     }
+        //     //if it's surrounded, just stop? 
+        //     if(obstacleLeft && obstacleRight){
+        //         motor_stop(M1);
+        //         motor_stop(M2);
+        //     }
+        // }
     }
 }
