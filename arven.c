@@ -68,19 +68,19 @@ int main() {
         //         //assuming M1 = left, M2 = right
         //         //based on the xyz from the UWB module, we would set it to reverse left/right
         //         //so we can go around the object, just setting it to reverse for now though
-        //         motor_reverse(M1, 1); //not sure what speed to set it to?
-        //         motor_reverse(M2, 1);
+        //         motor_reverse(M1, 30); //not sure what speed to set it to?
+        //         motor_reverse(M2, 30);
         //     }
         //     //if an object is detected in front of arven and to the left, we would want it to reverse right
         //     if(obstacleLeft && !obstacleRight && !bumpSensors){
-        //         motor_reverse(M2, 1);
-        //         motor_reverse(M1, 1); //stopping probably isn't what we want, but not sure how we would reverse in a
+        //         motor_reverse(M2, 30);
+        //         motor_reverse(M1, 10); //stopping probably isn't what we want, but not sure how we would reverse in a
         //                               //left/right direction?
         //     }
         //     //if an object is detected in front of arven and to the right, we would want it to reverse left
         //     if(!obstacleLeft && obstacleRight && !bumpSensors){
-        //         motor_reverse(M2, 1);
-        //         motor_reverse(M1, 1);
+        //         motor_reverse(M2, 10);
+        //         motor_reverse(M1, 30);
         //     }
         //     //if it's surrounded, just stop? 
         //     if(obstacleLeft && obstacleRight && bumpSensors){
