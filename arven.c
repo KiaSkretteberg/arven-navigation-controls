@@ -83,7 +83,7 @@ int main() {
         //         motor_reverse(M1, 1);
         //     }
         //     //if it's surrounded, just stop? 
-        //     if(obstacleLeft && obstacleRight){
+        //     if(obstacleLeft && obstacleRight && bumpSensors){
         //         motor_stop(M1);
         //         motor_stop(M2);
         //     }
