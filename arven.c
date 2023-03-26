@@ -11,7 +11,10 @@
 #include "ir.h"
 //#include "pico/cyw43_arch.h"
 
-const uint LED_PIN = 15;
+const uint BLUE_LED_PIN = 15;
+const uint YELLOW_LED_PIN = 16;
+const uint GREEN_LED_PIN = 17;
+
 int main() {
     struct AtmegaSensorValues sensorValues;
 
@@ -20,8 +23,14 @@ int main() {
     //     printf("Wi-Fi init failed");
     //     return -1;
     // }
-    gpio_init(LED_PIN);
-    gpio_set_dir(LED_PIN, GPIO_OUT);
+    gpio_init(BLUE_LED_PIN);
+    gpio_set_dir(BLUE_LED_PIN, GPIO_OUT);
+    
+    gpio_init(YELLOW_LED_PIN);
+    gpio_set_dir(YELLOW_LED_PIN, GPIO_OUT);
+    
+    gpio_init(GREEN_LED_PIN);
+    gpio_set_dir(GREEN_LED_PIN, GPIO_OUT);
 
     dwm1001_init_communication();
     atmega_init_communication();
@@ -29,30 +38,30 @@ int main() {
     motor_init_all();
 
     
-    motor_forward(Motor_FR, 20);
+    //motor_forward(Motor_FR, 20);
 
     while (true) {
         // TODO: Remove. Just for proof of life purposes
-        gpio_put(LED_PIN, 1);
+        gpio_put(BLUE_LED_PIN, 1);
         sleep_ms(250);
-        gpio_put(LED_PIN, 0);
+        gpio_put(BLUE_LED_PIN, 0);
         sleep_ms(250);
 
-        // //retrieve current frame 
-        // sensorValues = atmega_retrieve_sensor_values();
+        //retrieve current frame 
+        sensorValues = atmega_retrieve_sensor_values();
         
-        // Weight_LoadState loadPresent = Weight_CheckForLoad(sensorValues.Weight); 
+        Weight_LoadState loadPresent = Weight_CheckForLoad(sensorValues.Weight); 
 
-        // // check if there is an obstacle within 10cm
-        // bool obstacleLeft = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_L_Duration, 10);
-        // bool obstacleCentre = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_C_Duration, 10);
-        // bool obstacleRight = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_R_Duration, 10);
+        // check if there is an obstacle within 10cm
+        bool obstacleLeft = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_L_Duration, 10);
+        bool obstacleCentre = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_C_Duration, 10);
+        bool obstacleRight = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_R_Duration, 10);
 
-        // // Check if the ground (50mm -- 5cm) is still there
-        // bool dropImminentLeft = IR_CheckForDrop(sensorValues.IR_L_Distance, 50); 
-        // bool dropImminentRight = IR_CheckForDrop(sensorValues.IR_R_Distance, 50);
+        // Check if the ground (50mm -- 5cm) is still there
+        bool dropImminentLeft = IR_CheckForDrop(sensorValues.IR_L_Distance, 50); 
+        bool dropImminentRight = IR_CheckForDrop(sensorValues.IR_R_Distance, 50);
 
-        // bool obstacleRear = sensorValues.Bump_L || sensorValues.Bump_R;
+        bool obstacleRear = sensorValues.Bump_L || sensorValues.Bump_R;
 
         //dwm1001_request_position();
 
@@ -65,27 +74,27 @@ int main() {
         //     //if an object is detected ONLY in front of arven, we would want it to reverse only
         //     //if an object is detected in front and on the side, but not the back, we would want to reverse
         //     if((!obstacleLeft && !obstacleRight && !bumpSensors) || (obstacleLeft && obstacleRight && !bumpSensors)){
-        //         //assuming M1 = left, M2 = right
+        //         //assuming Motor_FL = left, Motor_FR = right
         //         //based on the xyz from the UWB module, we would set it to reverse left/right
         //         //so we can go around the object, just setting it to reverse for now though
-        //         motor_reverse(M1, 30); //not sure what speed to set it to?
-        //         motor_reverse(M2, 30);
+        //         motor_reverse(Motor_FL, 30); //not sure what speed to set it to?
+        //         motor_reverse(Motor_FR, 30);
         //     }
         //     //if an object is detected in front of arven and to the left, we would want it to reverse right
         //     if(obstacleLeft && !obstacleRight && !bumpSensors){
-        //         motor_reverse(M2, 30);
-        //         motor_reverse(M1, 10); //stopping probably isn't what we want, but not sure how we would reverse in a
+        //         motor_reverse(Motor_FR, 30);
+        //         motor_reverse(Motor_FL, 10); //stopping probably isn't what we want, but not sure how we would reverse in a
         //                               //left/right direction?
         //     }
         //     //if an object is detected in front of arven and to the right, we would want it to reverse left
         //     if(!obstacleLeft && obstacleRight && !bumpSensors){
-        //         motor_reverse(M2, 10);
-        //         motor_reverse(M1, 30);
+        //         motor_reverse(Motor_FR, 10);
+        //         motor_reverse(Motor_FL, 30);
         //     }
         //     //if it's surrounded, just stop? 
         //     if(obstacleLeft && obstacleRight && bumpSensors){
-        //         motor_stop(M1);
-        //         motor_stop(M2);
+        //         motor_stop(Motor_FL);
+        //         motor_stop(Motor_FR);
         //     }
         // }
     }

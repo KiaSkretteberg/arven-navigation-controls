@@ -6,12 +6,17 @@
  */
  
 #include <stdio.h>
+#include <string.h>
+#include <ctype.h>
 #include "pico/stdlib.h"
 #include "hardware/uart.h"
 #include "atmega.h"
 /************************************************************************/
 /* Local Definitions (private functions)                                */
 /************************************************************************/
+
+const uint TEST_LED_PIN = 16;
+const uint TEST_LED_PIN2 = 17;
 
 struct AtmegaFrame atmega_retrieve_frame(void);
 
@@ -70,6 +75,21 @@ void atmega_init_communication(void)
 
     // Now enable the UART to send interrupts - RX only
     uart_set_irq_enables(ATMEGA_UART_ID, true, false);
+
+    // TODO: Remove, testing only
+    struct AtmegaFrame frame;
+    frame.Battery = '1';
+    frame.Bumps_L_R = 'A';
+    strcpy(frame.IR_L, "FF");
+    strcpy(frame.IR_R, "FF");
+    frame.Motor_Directions = 'F';
+    strcpy(frame.Motor_Speed_FL, "FF");
+    strcpy(frame.Motor_Speed_FR, "FF");
+    strcpy(frame.Ultrasonic_L, "1FFFF");
+    strcpy(frame.Ultrasonic_C, "1FFFF");
+    strcpy(frame.Ultrasonic_R, "1FFFF");
+    strcpy(frame.Weight, "3E8");
+    frames[0] = frame;
 }
 
 void atmega_receive_data(void)
@@ -77,7 +97,6 @@ void atmega_receive_data(void)
     char bytesReceived = 0;
     struct AtmegaFrame frame;
     int frame_begin = 0; // flag indicating we saw the begin of a frame
-    int frame_end = 0; // flag indicating we saw the end of a frame
 
     while (uart_is_readable(ATMEGA_UART_ID)) 
     {
@@ -141,18 +160,18 @@ struct AtmegaSensorValues atmega_parse_frame(struct AtmegaFrame frame)
     char m_directions = convert_string_to_hex(frame.Motor_Directions);
 
     // The bytes come in opposite order (MSB to LSB), so we need to ensure they map back properly
-    sv.IR_L_Distance = convert_bytes_string_to_hex(&frame.IR_L, 1);
-    sv.IR_R_Distance = convert_bytes_string_to_hex(&frame.IR_R, 1);
+    sv.IR_L_Distance = convert_bytes_string_to_hex(frame.IR_L, 1);
+    sv.IR_R_Distance = convert_bytes_string_to_hex(frame.IR_R, 1);
 
-    sv.Ultrasonic_L_Duration = convert_bytes_string_to_hex(&frame.Ultrasonic_L, 4);
-    sv.Ultrasonic_C_Duration = convert_bytes_string_to_hex(&frame.Ultrasonic_C, 4);
-    sv.Ultrasonic_R_Duration = convert_bytes_string_to_hex(&frame.Ultrasonic_R, 4);
+    sv.Ultrasonic_L_Duration = convert_bytes_string_to_hex(frame.Ultrasonic_L, 4);
+    sv.Ultrasonic_C_Duration = convert_bytes_string_to_hex(frame.Ultrasonic_C, 4);
+    sv.Ultrasonic_R_Duration = convert_bytes_string_to_hex(frame.Ultrasonic_R, 4);
 
     // check the appropriate bits from the bumps value for 0/1
     sv.Bump_L = bumps & ATMEGA_BUMP_L;
     sv.Bump_R = bumps & ATMEGA_BUMP_R;
 
-    sv.Weight = convert_byte_string_to_hex(&frame.Weight, 2);
+    sv.Weight = convert_bytes_string_to_hex(frame.Weight, 2);
 
     // check the appropriate bits from the m_directions value for 0/1
     sv.Motor_FL_Direction = m_directions & ATMEGA_MOTOR_FL_Direction;
@@ -162,8 +181,8 @@ struct AtmegaSensorValues atmega_parse_frame(struct AtmegaFrame frame)
     // sv.Motor_BL_Direction = m_directions & ATMEGA_MOTOR_BL_Direction;
     // sv.Motor_BR_Direction = m_directions & ATMEGA_MOTOR_BR_Direction;
 
-    sv.Motor_FL_Speed = convert_bytes_string_to_hex(&frame.Motor_Speed_FL, 1);
-    sv.Motor_FR_Speed = convert_bytes_string_to_hex(&frame.Motor_Speed_FR, 1);
+    sv.Motor_FL_Speed = convert_bytes_string_to_hex(frame.Motor_Speed_FL, 1);
+    sv.Motor_FR_Speed = convert_bytes_string_to_hex(frame.Motor_Speed_FR, 1);
     // sv.Motor_ML_Speed = convert_bytes_string_to_hex(&frame.Motor_Speed_ML, 1);
     // sv.Motor_MR_Speed = convert_bytes_string_to_hex(&frame.Motor_Speed_MR, 1);
     // sv.Motor_BL_Speed = convert_bytes_string_to_hex(&frame.Motor_Speed_BL, 1);
@@ -171,6 +190,7 @@ struct AtmegaSensorValues atmega_parse_frame(struct AtmegaFrame frame)
 
     // check to see if the converted value is 0 or 1
     sv.Battery_Low = convert_string_to_hex(frame.Battery) & 1;
+        gpio_put(TEST_LED_PIN2, 1);
 
     return sv;
 }
@@ -178,35 +198,47 @@ struct AtmegaSensorValues atmega_parse_frame(struct AtmegaFrame frame)
 struct AtmegaFrame atmega_read_byte_into_frame(struct AtmegaFrame frame, char byteCount, char c) 
 {
     if(byteCount < 2) {
-        *frame.IR_L += c;
+        *frame.IR_L = c;
+        ++*frame.IR_L;
     } else if (byteCount < 4) {
-        *frame.IR_R += c;
+        *frame.IR_R = c;
+        ++*frame.IR_R;
     } else if (byteCount < 9) {
-        *frame.Ultrasonic_L += c;
+        *frame.Ultrasonic_L = c;
+        ++*frame.Ultrasonic_L;
     } else if (byteCount < 14) {
-        *frame.Ultrasonic_C += c;
+        *frame.Ultrasonic_C = c;
+        ++*frame.Ultrasonic_C;
     } else if (byteCount < 19) {
-        *frame.Ultrasonic_R += c;
+        *frame.Ultrasonic_R = c;
+        ++*frame.Ultrasonic_R;
     } else if (byteCount < 20) {
         frame.Bumps_L_R = c;
     } else if (byteCount < 23) {
-        *frame.Weight += c;
+        *frame.Weight = c;
+        ++*frame.Weight;
     } else if (byteCount < 24) {
         frame.Battery = c;
     } else if (byteCount < 25) {
         frame.Motor_Directions = c;
     } else if (byteCount < 27) {
-        *frame.Motor_Speed_FL += c;
+        *frame.Motor_Speed_FL = c;
+        ++*frame.Motor_Speed_FL;
     } else if (byteCount < 29) {
-        *frame.Motor_Speed_FR += c;
+        *frame.Motor_Speed_FR = c;
+        ++*frame.Motor_Speed_FR;
     // } else if (byteCount < 31) {
-    //     *frame.Motor_Speed_ML += c;
+    //     *frame.Motor_Speed_ML = c;
+    //    ++*frame.Motor_Speed_ML;
     // } else if (byteCount < 33) {
-    //     *frame.Motor_Speed_MR += c;
+    //     *frame.Motor_Speed_MR = c;
+    //    ++*frame.Motor_Speed_MR;
     // } else if (byteCount < 35) {
-    //     *frame.Motor_Speed_BL += c;
+    //     *frame.Motor_Speed_BL = c;
+    //    ++*frame.Motor_Speed_BL;
     // } else if (byteCount < 37) {
-    //     *frame.Motor_Speed_BR += c;
+    //     *frame.Motor_Speed_BR = c;
+    //    ++*frame.Motor_Speed_BR;
     }
 
     return frame;
@@ -221,11 +253,15 @@ long convert_bytes_string_to_hex(char * bytes, char startByteIndex)
         // starting from the MSB, add the current byte value to the return value
         // with the approrpiate position in significance
         value = *bytes * (byteIndex > 0 ? (byteIndex * 16) : 1);
+        gpio_put(TEST_LED_PIN2, 1);
         // move to the next byte
         ++*bytes;
+        gpio_put(15, 1);
         // keep track of the number of bytes we've processed, until we have no bytes left
         --byteIndex;
+        gpio_put(TEST_LED_PIN, 1);
     }
+    return value;
 }
 
 char convert_string_to_hex(char c)
