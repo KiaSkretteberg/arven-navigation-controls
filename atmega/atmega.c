@@ -148,19 +148,19 @@ struct AtmegaFrame atmega_retrieve_frame(void)
 struct AtmegaSensorValues atmega_parse_frame(struct AtmegaFrame frame)
 {
     struct AtmegaSensorValues sv;
-    char modified = convert_string_to_hex(frame.Modified);
+    char changed = convert_string_to_hex(frame.Changed);
     char bumps = convert_string_to_hex(frame.Bumps_L_R);
     char m_directions = convert_string_to_hex(frame.Motor_Directions);
 
-    // Check each bit of the modified byte to see which bytes have changes
-    sv.IR_L_Changed         = modified & ATMEGA_IR_L_CHANGED;
-    sv.IR_R_Changed         = modified & ATMEGA_IR_R_CHANGED;
-    sv.Ultrasonic_L_Changed = modified & ATMEGA_ULTRASONIC_L_CHANGED;
-    sv.Ultrasonic_C_Changed = modified & ATMEGA_ULTRASONIC_C_CHANGED;
-    sv.Ultrasonic_R_Changed = modified & ATMEGA_ULTRASONIC_R_CHANGED;
-    sv.Bumps_Changed        = modified & ATMEGA_BUMPS_CHANGED;
-    sv.Weight_Changed       = modified & ATMEGA_WEIGHT_CHANGED;
-    sv.Encoders_Changed     = modified & ATMEGA_ENCODERS_CHANGED;
+    // Check each bit of the changed byte to see which bytes have changes
+    sv.IR_L_Changed         = changed & ATMEGA_IR_L_CHANGED;
+    sv.IR_R_Changed         = changed & ATMEGA_IR_R_CHANGED;
+    sv.Ultrasonic_L_Changed = changed & ATMEGA_ULTRASONIC_L_CHANGED;
+    sv.Ultrasonic_C_Changed = changed & ATMEGA_ULTRASONIC_C_CHANGED;
+    sv.Ultrasonic_R_Changed = changed & ATMEGA_ULTRASONIC_R_CHANGED;
+    sv.Bumps_Changed        = changed & ATMEGA_BUMPS_CHANGED;
+    sv.Weight_Changed       = changed & ATMEGA_WEIGHT_CHANGED;
+    sv.Encoders_Changed     = changed & ATMEGA_ENCODERS_CHANGED;
 
     // The bytes come in opposite order (MSB to LSB), so we need to ensure they map back properly
     sv.IR_L_Distance = convert_bytes_string_to_hex(frame.IR_L, 1);
@@ -200,7 +200,7 @@ struct AtmegaSensorValues atmega_parse_frame(struct AtmegaFrame frame)
 struct AtmegaFrame atmega_read_byte_into_frame(struct AtmegaFrame frame, char byteCount, char c) 
 {
     if(byteCount < 1) {
-        frame.Modified = c;
+        frame.Changed = c;
     } else if(byteCount < 3) {
         *frame.IR_L = c;
         ++*frame.IR_L;

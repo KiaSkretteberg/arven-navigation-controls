@@ -120,7 +120,7 @@
 #define ATMEGA_END_BYTE          '^' // indicator of an end frame
 
 // Comparison ints for checking the bits in the char returned 
-// in the frame to see if th values were modified since last seen
+// in the frame to see if the values were changed since last seen
 #define ATMEGA_IR_L_CHANGED          0b10000000;
 #define ATMEGA_IR_R_CHANGED          0b01000000;
 #define ATMEGA_ULTRASONIC_L_CHANGED  0b00100000;
@@ -141,7 +141,7 @@
 // #define ATMEGA_MOTOR_BR_Direction 0b00000001
 
 struct AtmegaFrame {
-    char Modified;
+    char Changed;
     char IR_L[3];
     char IR_R[3];
     char Ultrasonic_L[6];
