@@ -114,6 +114,7 @@ int main() {
                         motor_forward(Motor_FR, turnSpeed);
                         motor_forward(Motor_FL, normalSpeed);                    
                     }
+                    //turn left if there's only an object on the right
                     if(!obstacleLeft && obstacleRight){
                         motor_stop(Motor_FL);
                         motor_stop(Motor_FR);
@@ -121,6 +122,14 @@ int main() {
                         motor_forward(Motor_FR, normalSpeed);
                         motor_forward(Motor_FL, turnSpeed);    
 
+                    }
+                    //keep going forward if we detect no objects
+                    if(!obstacleLeft && !obstacleRight){
+                        motor_stop(Motor_FL);
+                        motor_stop(Motor_FR);
+                        //wait x amount of seconds to make sure it stopped
+                        motor_forward(Motor_FR, normalSpeed);
+                        motor_forward(Motor_FL, normalSpeed);                        
                     }
                 }
  
