@@ -37,9 +37,6 @@ int main() {
 
     motor_init_all();
 
-    
-    //motor_forward(Motor_FR, 20);
-
     while (true) {
         // TODO: Remove. Just for proof of life purposes
         gpio_put(BLUE_LED_PIN, 1);
@@ -52,10 +49,10 @@ int main() {
         
         Weight_LoadState loadPresent = Weight_CheckForLoad(sensorValues.Weight); 
 
-        // check if there is an obstacle within 10cm
-        bool obstacleLeft = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_L_Duration, 10);
-        bool obstacleCentre = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_C_Duration, 10);
-        bool obstacleRight = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_R_Duration, 10);
+        // check if there is an obstacle within 30cm
+        bool obstacleCentre = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_L_Duration, 30);
+        bool obstacleLeft = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_C_Duration, 30);
+        bool obstacleRight = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_R_Duration, 30);
 
         // Check if the ground (50mm -- 5cm) is still there
         bool dropImminentLeft = IR_CheckForDrop(sensorValues.IR_L_Distance, 50); 

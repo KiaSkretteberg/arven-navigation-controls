@@ -75,21 +75,6 @@ void atmega_init_communication(void)
 
     // Now enable the UART to send interrupts - RX only
     uart_set_irq_enables(ATMEGA_UART_ID, true, false);
-
-    // TODO: Remove, testing only
-    struct AtmegaFrame frame;
-    frame.Battery = '1';
-    frame.Bumps_L_R = 'A';
-    strcpy(frame.IR_L, "FF");
-    strcpy(frame.IR_R, "FF");
-    frame.Motor_Directions = 'F';
-    strcpy(frame.Motor_Speed_FL, "FF");
-    strcpy(frame.Motor_Speed_FR, "FF");
-    strcpy(frame.Ultrasonic_L, "1FFFF");
-    strcpy(frame.Ultrasonic_C, "1FFFF");
-    strcpy(frame.Ultrasonic_R, "1FFFF");
-    strcpy(frame.Weight, "3E8");
-    frames[0] = frame;
 }
 
 void atmega_receive_data(void)
@@ -100,13 +85,16 @@ void atmega_receive_data(void)
 
     while (uart_is_readable(ATMEGA_UART_ID)) 
     {
+        char buff[ATMEGA_FRAME_LENGTH + 1];
         uint8_t ch = uart_getc(ATMEGA_UART_ID);
+            
 
         // start of frame seen for the first time
         if(ch == ATMEGA_START_BYTE && !frame_begin)
         {
             frame_begin = 1;
             frames[current_frame_index] = frame;
+            atmega_send_data("\nSTART");
         }
         // end frame seen after a start frame is seen and we got the expected number of bytes
         else if(ch == ATMEGA_END_BYTE && frame_begin && bytesReceived == ATMEGA_FRAME_LENGTH)
@@ -118,16 +106,20 @@ void atmega_receive_data(void)
                 current_frame_index = 0;
             // reset frame begin so we know that we are no longer reading a frame
             frame_begin = 0;
+            atmega_send_data("\nEND\n");
+            atmega_send_data(buff);
         }
         // data received after begin frame seen
         else if(frame_begin && bytesReceived < ATMEGA_FRAME_LENGTH) 
         {
             frames[current_frame_index] = atmega_read_byte_into_frame(frames[current_frame_index], bytesReceived, ch);
             ++bytesReceived;
+            atmega_send_data("-");
         }
         // some sort of error (frame_begin not seen, frame_end seen too early, frame_end seen before frame_begin)
         else
         {
+            atmega_send_data("\nERROR");
             //TODO: What to do if there's a frame error?
             // Re-request data? Ignore and move on? Record error somewhere?
         }
@@ -156,8 +148,19 @@ struct AtmegaFrame atmega_retrieve_frame(void)
 struct AtmegaSensorValues atmega_parse_frame(struct AtmegaFrame frame)
 {
     struct AtmegaSensorValues sv;
+    char changed = convert_string_to_hex(frame.Changed);
     char bumps = convert_string_to_hex(frame.Bumps_L_R);
     char m_directions = convert_string_to_hex(frame.Motor_Directions);
+
+    // Check each bit of the changed byte to see which bytes have changes
+    sv.IR_L_Changed         = changed & ATMEGA_IR_L_CHANGED;
+    sv.IR_R_Changed         = changed & ATMEGA_IR_R_CHANGED;
+    sv.Ultrasonic_L_Changed = changed & ATMEGA_ULTRASONIC_L_CHANGED;
+    sv.Ultrasonic_C_Changed = changed & ATMEGA_ULTRASONIC_C_CHANGED;
+    sv.Ultrasonic_R_Changed = changed & ATMEGA_ULTRASONIC_R_CHANGED;
+    sv.Bumps_Changed        = changed & ATMEGA_BUMPS_CHANGED;
+    sv.Weight_Changed       = changed & ATMEGA_WEIGHT_CHANGED;
+    sv.Encoders_Changed     = changed & ATMEGA_ENCODERS_CHANGED;
 
     // The bytes come in opposite order (MSB to LSB), so we need to ensure they map back properly
     sv.IR_L_Distance = convert_bytes_string_to_hex(frame.IR_L, 1);
@@ -190,53 +193,54 @@ struct AtmegaSensorValues atmega_parse_frame(struct AtmegaFrame frame)
 
     // check to see if the converted value is 0 or 1
     sv.Battery_Low = convert_string_to_hex(frame.Battery) & 1;
-        gpio_put(TEST_LED_PIN2, 1);
 
     return sv;
 }
 
 struct AtmegaFrame atmega_read_byte_into_frame(struct AtmegaFrame frame, char byteCount, char c) 
 {
-    if(byteCount < 2) {
+    if(byteCount < 1) {
+        frame.Changed = c;
+    } else if(byteCount < 3) {
         *frame.IR_L = c;
         ++*frame.IR_L;
-    } else if (byteCount < 4) {
+    } else if (byteCount < 5) {
         *frame.IR_R = c;
         ++*frame.IR_R;
-    } else if (byteCount < 9) {
+    } else if (byteCount < 10) {
         *frame.Ultrasonic_L = c;
         ++*frame.Ultrasonic_L;
-    } else if (byteCount < 14) {
+    } else if (byteCount < 15) {
         *frame.Ultrasonic_C = c;
         ++*frame.Ultrasonic_C;
-    } else if (byteCount < 19) {
+    } else if (byteCount < 20) {
         *frame.Ultrasonic_R = c;
         ++*frame.Ultrasonic_R;
-    } else if (byteCount < 20) {
+    } else if (byteCount < 21) {
         frame.Bumps_L_R = c;
-    } else if (byteCount < 23) {
+    } else if (byteCount < 24) {
         *frame.Weight = c;
         ++*frame.Weight;
-    } else if (byteCount < 24) {
-        frame.Battery = c;
     } else if (byteCount < 25) {
+        frame.Battery = c;
+    } else if (byteCount < 26) {
         frame.Motor_Directions = c;
-    } else if (byteCount < 27) {
+    } else if (byteCount < 28) {
         *frame.Motor_Speed_FL = c;
         ++*frame.Motor_Speed_FL;
-    } else if (byteCount < 29) {
+    } else if (byteCount < 30) {
         *frame.Motor_Speed_FR = c;
         ++*frame.Motor_Speed_FR;
-    // } else if (byteCount < 31) {
+    // } else if (byteCount < 32) {
     //     *frame.Motor_Speed_ML = c;
     //    ++*frame.Motor_Speed_ML;
-    // } else if (byteCount < 33) {
+    // } else if (byteCount < 34) {
     //     *frame.Motor_Speed_MR = c;
     //    ++*frame.Motor_Speed_MR;
-    // } else if (byteCount < 35) {
+    // } else if (byteCount < 36) {
     //     *frame.Motor_Speed_BL = c;
     //    ++*frame.Motor_Speed_BL;
-    // } else if (byteCount < 37) {
+    // } else if (byteCount < 38) {
     //     *frame.Motor_Speed_BR = c;
     //    ++*frame.Motor_Speed_BR;
     }
@@ -253,13 +257,15 @@ long convert_bytes_string_to_hex(char * bytes, char startByteIndex)
         // starting from the MSB, add the current byte value to the return value
         // with the approrpiate position in significance
         value = *bytes * (byteIndex > 0 ? (byteIndex * 16) : 1);
-        gpio_put(TEST_LED_PIN2, 1);
         // move to the next byte
         ++*bytes;
-        gpio_put(15, 1);
+
+        // break out of the loop once we've finished processing the last one since we can't go below 0
+        if(byteIndex == 0)
+            break;
+
         // keep track of the number of bytes we've processed, until we have no bytes left
         --byteIndex;
-        gpio_put(TEST_LED_PIN, 1);
     }
     return value;
 }

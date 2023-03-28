@@ -109,15 +109,26 @@
 #define ATMEGA_RX_PIN 1 // GPIO pin 1 [pin 2]
 
 #define ATMEGA_UART_ID   uart0
-#define ATMEGA_BAUD_RATE 115200
+#define ATMEGA_BAUD_RATE 56000
 #define ATMEGA_DATA_BITS 8
 #define ATMEGA_STOP_BITS 1
 #define ATMEGA_PARITY    UART_PARITY_NONE
 
 #define ATMEGA_MAX_FRAMES_STORED 5   // max number of frames that can be stored before we start overwriting the oldest ones
-#define ATMEGA_FRAME_LENGTH      30  // not inclusive of start/end bytes
+#define ATMEGA_FRAME_LENGTH      29  // not inclusive of start/end bytes
 #define ATMEGA_START_BYTE        '$' // indicator of a start frame
 #define ATMEGA_END_BYTE          '^' // indicator of an end frame
+
+// Comparison ints for checking the bits in the char returned 
+// in the frame to see if the values were changed since last seen
+#define ATMEGA_IR_L_CHANGED          0b10000000;
+#define ATMEGA_IR_R_CHANGED          0b01000000;
+#define ATMEGA_ULTRASONIC_L_CHANGED  0b00100000;
+#define ATMEGA_ULTRASONIC_C_CHANGED  0b00010000;
+#define ATMEGA_ULTRASONIC_R_CHANGED  0b00001000;
+#define ATMEGA_BUMPS_CHANGED         0b00000100;
+#define ATMEGA_WEIGHT_CHANGED        0b00000010;
+#define ATMEGA_ENCODERS_CHANGED      0b00000001;
 
 #define ATMEGA_BUMP_L 0b10
 #define ATMEGA_BUMP_R 0b01
@@ -130,6 +141,7 @@
 // #define ATMEGA_MOTOR_BR_Direction 0b00000001
 
 struct AtmegaFrame {
+    char Changed;
     char IR_L[3];
     char IR_R[3];
     char Ultrasonic_L[6];
@@ -148,6 +160,16 @@ struct AtmegaFrame {
 };
 
 struct AtmegaSensorValues {
+    // flags indicating if the respective values have changed since last read
+    bool IR_L_Changed;
+    bool IR_R_Changed;
+    bool Ultrasonic_L_Changed;
+    bool Ultrasonic_C_Changed;
+    bool Ultrasonic_R_Changed;
+    bool Bumps_Changed;
+    bool Weight_Changed;
+    bool Encoders_Changed;
+
     char IR_L_Distance;         //measured in mm
     char IR_R_Distance;         //measured in mm
 
