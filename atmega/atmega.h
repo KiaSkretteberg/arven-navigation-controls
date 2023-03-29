@@ -160,6 +160,7 @@ struct AtmegaFrame {
 };
 
 struct AtmegaSensorValues {
+    bool Changes;
     // flags indicating if the respective values have changed since last read
     bool IR_L_Changed;
     bool IR_R_Changed;

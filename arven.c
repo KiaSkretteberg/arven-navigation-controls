@@ -46,127 +46,132 @@ int main() {
 
         //retrieve current frame 
         sensorValues = atmega_retrieve_sensor_values();
-        
-        Weight_LoadState loadPresent = Weight_CheckForLoad(sensorValues.Weight); 
 
-        // check if there is an obstacle within 30cm
-        bool obstacleCentre = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_L_Duration, 30);
-        bool obstacleLeft = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_C_Duration, 30);
-        bool obstacleRight = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_R_Duration, 30);
+        // only check the values below and act on them if SOMETHING has changed 
+        // (also used as an indication of a proper frame received)
+        if(sensorValues.Changes) 
+        {        
+            Weight_LoadState loadPresent = Weight_CheckForLoad(sensorValues.Weight); 
 
-        // Check if the ground (50mm -- 5cm) is still there
-        bool dropImminentLeft = IR_CheckForDrop(sensorValues.IR_L_Distance, 50); 
-        bool dropImminentRight = IR_CheckForDrop(sensorValues.IR_R_Distance, 50);
+            // check if there is an obstacle within 30cm
+            bool obstacleCentre = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_L_Duration, 30);
+            bool obstacleLeft = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_C_Duration, 30);
+            bool obstacleRight = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_R_Duration, 30);
 
-        bool obstacleRear = sensorValues.Bump_L || sensorValues.Bump_R;
+            // Check if the ground (50mm -- 5cm) is still there
+            bool dropImminentLeft = IR_CheckForDrop(sensorValues.IR_L_Distance, 50); 
+            bool dropImminentRight = IR_CheckForDrop(sensorValues.IR_R_Distance, 50);
 
-        //dwm1001_request_position();
-        //pseudo navigation/object detection stuff
-        int turnSpeed = 25;
-        int normalSpeed = 20;
-        //prioritize drop detection first
-        if(!dropImminentLeft && ! dropImminentRight){
-            //second priority is bump sensors, that way we know whether or not we can reverse
-            if(!obstacleRear){
-                if(obstacleCentre){
-                    if((!obstacleLeft && !obstacleRight) || (obstacleLeft && obstacleRight)){
-                    //assuming Motor_FL = left, Motor_FR = right
-                    //based on the xyz from the UWB module, we would set it to reverse left/right
-                    //so we can go around the object, just setting it to reverse for now though
-                    motor_stop(Motor_FL);
-                    motor_stop(Motor_FR);
-                    //wait x amount of seconds to make sure it stopped
-                    motor_reverse(Motor_FL, turnSpeed); 
-                    motor_reverse(Motor_FR, turnSpeed);
-                    }
-                    //if an object is detected in front of arven and to the left, we would want it to reverse right
-                    if(obstacleLeft && !obstacleRight){
+            bool obstacleRear = sensorValues.Bump_L || sensorValues.Bump_R;
+
+            //dwm1001_request_position();
+            //pseudo navigation/object detection stuff
+            int turnSpeed = 25;
+            int normalSpeed = 20;
+            //prioritize drop detection first
+            if(!dropImminentLeft && ! dropImminentRight){
+                //second priority is bump sensors, that way we know whether or not we can reverse
+                if(!obstacleRear){
+                    if(obstacleCentre){
+                        if((!obstacleLeft && !obstacleRight) || (obstacleLeft && obstacleRight)){
+                        //assuming Motor_FL = left, Motor_FR = right
+                        //based on the xyz from the UWB module, we would set it to reverse left/right
+                        //so we can go around the object, just setting it to reverse for now though
                         motor_stop(Motor_FL);
                         motor_stop(Motor_FR);
                         //wait x amount of seconds to make sure it stopped
+                        motor_reverse(Motor_FL, turnSpeed); 
                         motor_reverse(Motor_FR, turnSpeed);
-                        motor_reverse(Motor_FL, normalSpeed); 
+                        }
+                        //if an object is detected in front of arven and to the left, we would want it to reverse right
+                        if(obstacleLeft && !obstacleRight){
+                            motor_stop(Motor_FL);
+                            motor_stop(Motor_FR);
+                            //wait x amount of seconds to make sure it stopped
+                            motor_reverse(Motor_FR, turnSpeed);
+                            motor_reverse(Motor_FL, normalSpeed); 
+                        }
+                        //if an object is detected in front of arven and to the right, we would want it to reverse left
+                        if(!obstacleLeft && obstacleRight){
+                            motor_stop(Motor_FL);
+                            motor_stop(Motor_FR);
+                            //wait x amount of seconds to make sure it stopped
+                            motor_reverse(Motor_FR, normalSpeed);
+                            motor_reverse(Motor_FL, turnSpeed);
+                        }
+                    } else{
+                        //if an object is detected on the left and right, continue straight?
+                        //probably depends on how much space is in between arven and the objects
+                        if(obstacleLeft && obstacleRight){
+                            motor_stop(Motor_FL);
+                            motor_stop(Motor_FR);
+                            //wait x amount of seconds to make sure it stopped
+                            motor_forward(Motor_FR, normalSpeed);
+                            motor_forward(Motor_FL, normalSpeed);
+                        }
+                        //turn right if we see an object only on the left 
+                        if(obstacleLeft && !obstacleRight){
+                            motor_stop(Motor_FL);
+                            motor_stop(Motor_FR);
+                            //wait x amount of seconds to make sure it stopped
+                            motor_forward(Motor_FR, turnSpeed);
+                            motor_forward(Motor_FL, normalSpeed);                    
+                        }
+                        //turn left if there's only an object on the right
+                        if(!obstacleLeft && obstacleRight){
+                            motor_stop(Motor_FL);
+                            motor_stop(Motor_FR);
+                            //wait x amount of seconds to make sure it stopped
+                            motor_forward(Motor_FR, normalSpeed);
+                            motor_forward(Motor_FL, turnSpeed);    
+
+                        }
+                        //keep going forward if we detect no objects
+                        if(!obstacleLeft && !obstacleRight){
+                            motor_stop(Motor_FL);
+                            motor_stop(Motor_FR);
+                            //wait x amount of seconds to make sure it stopped
+                            motor_forward(Motor_FR, normalSpeed);
+                            motor_forward(Motor_FL, normalSpeed);                        
+                        }
                     }
-                    //if an object is detected in front of arven and to the right, we would want it to reverse left
-                    if(!obstacleLeft && obstacleRight){
+    
+    
+                }
+                if(obstacleRear){
+                    //if it's surrounded, just stop? 
+                    if(obstacleLeft && obstacleRight && obstacleCentre){
                         motor_stop(Motor_FL);
                         motor_stop(Motor_FR);
-                        //wait x amount of seconds to make sure it stopped
-                        motor_reverse(Motor_FR, normalSpeed);
-                        motor_reverse(Motor_FL, turnSpeed);
                     }
-                } else{
-                    //if an object is detected on the left and right, continue straight?
-                    //probably depends on how much space is in between arven and the objects
-                    if(obstacleLeft && obstacleRight){
-                        motor_stop(Motor_FL);
-                        motor_stop(Motor_FR);
-                        //wait x amount of seconds to make sure it stopped
-                        motor_forward(Motor_FR, normalSpeed);
-                        motor_forward(Motor_FL, normalSpeed);
+                    //if an object is detected to in front and behind, not sure? 
+                    //would probably depend on the UWB stuff for whether we turn right/left
+                    //in terms of positioning
+                    if(!obstacleLeft && !obstacleRight && obstacleCentre){
+                        //TODO
                     }
-                    //turn right if we see an object only on the left 
-                    if(obstacleLeft && !obstacleRight){
+                    //
+                    if(obstacleLeft && !obstacleRight && obstacleCentre){
                         motor_stop(Motor_FL);
                         motor_stop(Motor_FR);
                         //wait x amount of seconds to make sure it stopped
                         motor_forward(Motor_FR, turnSpeed);
-                        motor_forward(Motor_FL, normalSpeed);                    
+                        motor_forward(Motor_FL, normalSpeed);                
                     }
-                    //turn left if there's only an object on the right
-                    if(!obstacleLeft && obstacleRight){
+                    if(!obstacleLeft && obstacleRight && obstacleCentre){
                         motor_stop(Motor_FL);
                         motor_stop(Motor_FR);
                         //wait x amount of seconds to make sure it stopped
                         motor_forward(Motor_FR, normalSpeed);
-                        motor_forward(Motor_FL, turnSpeed);    
-
+                        motor_forward(Motor_FL, turnSpeed);                   
                     }
-                    //keep going forward if we detect no objects
-                    if(!obstacleLeft && !obstacleRight){
-                        motor_stop(Motor_FL);
-                        motor_stop(Motor_FR);
-                        //wait x amount of seconds to make sure it stopped
-                        motor_forward(Motor_FR, normalSpeed);
-                        motor_forward(Motor_FL, normalSpeed);                        
-                    }
-                }
- 
-   
-            }
-            if(obstacleRear){
-                //if it's surrounded, just stop? 
-                if(obstacleLeft && obstacleRight && obstacleCentre){
-                    motor_stop(Motor_FL);
-                    motor_stop(Motor_FR);
-                }
-                //if an object is detected to in front and behind, not sure? 
-                //would probably depend on the UWB stuff for whether we turn right/left
-                //in terms of positioning
-                if(!obstacleLeft && !obstacleRight && obstacleCentre){
-                    //TODO
-                }
-                //
-                if(obstacleLeft && !obstacleRight && obstacleCentre){
-                    motor_stop(Motor_FL);
-                    motor_stop(Motor_FR);
-                    //wait x amount of seconds to make sure it stopped
-                    motor_forward(Motor_FR, turnSpeed);
-                    motor_forward(Motor_FL, normalSpeed);                
-                }
-                if(!obstacleLeft && obstacleRight && obstacleCentre){
-                    motor_stop(Motor_FL);
-                    motor_stop(Motor_FR);
-                    //wait x amount of seconds to make sure it stopped
-                    motor_forward(Motor_FR, normalSpeed);
-                    motor_forward(Motor_FL, turnSpeed);                   
-                }
 
+                }
+            } else{
+                //just stop if we're about to fall
+                motor_stop(Motor_FL);
+                motor_stop(Motor_FR);            
             }
-        } else{
-            //just stop if we're about to fall
-            motor_stop(Motor_FL);
-            motor_stop(Motor_FR);            
         }
     }
 }

@@ -158,15 +158,16 @@ struct AtmegaFrame atmega_retrieve_frame(void)
 void atmega_parse_bytes(void)
 {
     char bytesRead = 0;
+    char buff[ATMEGA_FRAME_LENGTH + 1];
+    strcpy(buff, rxBuff);
     atmega_send_data("\nPARSING...\n");
-    atmega_send_data(rxBuff);
+    atmega_send_data(buff);
 
-    //TODO: Copy the rxBuff first so that if another frame comes in while we're reading it won't break
-    while(*rxBuff)
+    while(*buff)
     {
-        frames[current_frame_index] = atmega_read_byte_into_frame(frames[current_frame_index], bytesRead, *rxBuff);
+        frames[current_frame_index] = atmega_read_byte_into_frame(frames[current_frame_index], bytesRead, *buff);
         ++bytesRead;
-        ++*rxBuff;
+        ++*buff;
     }
 }
 
@@ -178,6 +179,7 @@ struct AtmegaSensorValues atmega_parse_frame(struct AtmegaFrame frame)
     char m_directions = convert_string_to_hex(frame.Motor_Directions);
 
     // Check each bit of the changed byte to see which bytes have changes
+    sv.Changes              = changed > 0;
     sv.IR_L_Changed         = changed & ATMEGA_IR_L_CHANGED;
     sv.IR_R_Changed         = changed & ATMEGA_IR_R_CHANGED;
     sv.Ultrasonic_L_Changed = changed & ATMEGA_ULTRASONIC_L_CHANGED;
