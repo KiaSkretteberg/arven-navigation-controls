@@ -9,11 +9,13 @@ WILL BE REFACTORED FOR UNDERSTANDING
  * Created: 2023-03-29
  * Author: Kia Skretteberg
  */
-#include "web.h"
+#include <stdio.h>
+#include "pico/stdlib.h"
 #include "lwip/pbuf.h"
 #include "lwip/altcp_tcp.h"
 #include "lwip/altcp_tls.h"
 #include "lwip/dns.h"
+#include "web.h"
 
 /************************************************************************/
 /* Global Variables                                                     */
@@ -29,10 +31,9 @@ static struct altcp_tls_config *tls_config = NULL;
 /************************************************************************/
 /* Header Implementation                                                */
 /************************************************************************/
-
-// TODO: TAKEN 
+ 
 static err_t tls_client_close(void *arg) {
-    TLS_CLIENT_T *state = (TLS_CLIENT_T*)arg;
+    WEB_CLIENT *state = (WEB_CLIENT*)arg;
     err_t err = ERR_OK;
 
     state->complete = true;
@@ -53,7 +54,7 @@ static err_t tls_client_close(void *arg) {
 }
 
 static err_t tls_client_connected(void *arg, struct altcp_pcb *pcb, err_t err) {
-    TLS_CLIENT_T *state = (TLS_CLIENT_T*)arg;
+    WEB_CLIENT *state = (WEB_CLIENT*)arg;
     if (err != ERR_OK) {
         printf("connect failed %d\n", err);
         return tls_client_close(state);
@@ -75,13 +76,13 @@ static err_t tls_client_poll(void *arg, struct altcp_pcb *pcb) {
 }
 
 static void tls_client_err(void *arg, err_t err) {
-    TLS_CLIENT_T *state = (TLS_CLIENT_T*)arg;
+    WEB_CLIENT *state = (WEB_CLIENT*)arg;
     printf("tls_client_err %d\n", err);
     state->pcb = NULL; /* pcb freed by lwip when _err function is called */
 }
 
 static err_t tls_client_recv(void *arg, struct altcp_pcb *pcb, struct pbuf *p, err_t err) {
-    TLS_CLIENT_T *state = (TLS_CLIENT_T*)arg;
+    WEB_CLIENT *state = (WEB_CLIENT*)arg;
     if (!p) {
         printf("connection closed\n");
         return tls_client_close(state);
@@ -106,7 +107,7 @@ static err_t tls_client_recv(void *arg, struct altcp_pcb *pcb, struct pbuf *p, e
     return ERR_OK;
 }
 
-static void tls_client_connect_to_server_ip(const ip_addr_t *ipaddr, TLS_CLIENT_T *state)
+static void tls_client_connect_to_server_ip(const ip_addr_t *ipaddr, WEB_CLIENT *state)
 {
     err_t err;
     u16_t port = 443;
@@ -125,7 +126,7 @@ static void tls_client_dns_found(const char* hostname, const ip_addr_t *ipaddr, 
     if (ipaddr)
     {
         printf("DNS resolving complete\n");
-        tls_client_connect_to_server_ip(ipaddr, (TLS_CLIENT_T *) arg);
+        tls_client_connect_to_server_ip(ipaddr, (WEB_CLIENT *) arg);
     }
     else
     {
@@ -138,7 +139,7 @@ static void tls_client_dns_found(const char* hostname, const ip_addr_t *ipaddr, 
 static bool tls_client_open(const char *hostname, void *arg) {
     err_t err;
     ip_addr_t server_ip;
-    TLS_CLIENT_T *state = (TLS_CLIENT_T*)arg;
+    WEB_CLIENT *state = (WEB_CLIENT*)arg;
 
     state->pcb = altcp_tls_new(tls_config, IPADDR_TYPE_ANY);
     if (!state->pcb) {
@@ -147,7 +148,7 @@ static bool tls_client_open(const char *hostname, void *arg) {
     }
 
     altcp_arg(state->pcb, state);
-    altcp_poll(state->pcb, tls_client_poll, TLS_CLIENT_TIMEOUT_SECS * 2);
+    altcp_poll(state->pcb, tls_client_poll, WEB_CLIENTIMEOUT_SECS * 2);
     altcp_recv(state->pcb, tls_client_recv);
     altcp_err(state->pcb, tls_client_err);
 
@@ -180,8 +181,8 @@ static bool tls_client_open(const char *hostname, void *arg) {
 }
 
 // Perform initialisation
-static TLS_CLIENT_T* tls_client_init(void) {
-    TLS_CLIENT_T *state = calloc(1, sizeof(TLS_CLIENT_T));
+static WEB_CLIENT* tls_client_init(void) {
+    WEB_CLIENT *state = calloc(1, sizeof(WEB_CLIENT));
     if (!state) {
         printf("failed to allocate state\n");
         return NULL;
@@ -194,7 +195,7 @@ void run_tls_client_test(void) {
     /* No CA certificate checking */
     tls_config = altcp_tls_create_config_client(NULL, 0);
 
-    TLS_CLIENT_T *state = tls_client_init();
+    WEB_CLIENT *state = tls_client_init();
     if (!state) {
         return;
     }

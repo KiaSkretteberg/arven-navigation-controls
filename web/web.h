@@ -14,7 +14,7 @@
                                  "\r\n"
 #define WEB_CLIENT_TIMEOUT_SECS  15
 
-typedef struct WEB_CLIENT_T_ {
+typedef struct WEB_CLIENT {
     struct altcp_pcb *pcb;
     bool complete;
-} WEB_CLIENT_T;
+} WEB_CLIENT;
