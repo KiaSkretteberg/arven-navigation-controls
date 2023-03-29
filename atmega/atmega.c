@@ -94,7 +94,7 @@ void atmega_receive_data(void)
         char ch = uart_getc(ATMEGA_UART_ID);
 
         // start of frame seen for the first time
-        if(ch == ATMEGA_START_BYTE && !frame_begin)
+        if(ch == ATMEGA_START_BYTE)
         {
             struct AtmegaFrame frame;
             // reset the buffer to be empty
@@ -123,9 +123,10 @@ void atmega_receive_data(void)
         else if(frame_begin && bytesReceived < ATMEGA_FRAME_LENGTH) 
         {
             // read the byte into the buffer to be parsed later
-            strcat(rxBuff, &ch);
+            rxBuff[bytesReceived] = ch;
             // keep track of how many bytes have been received so we'll know when we reach the end of frame
             ++bytesReceived;
+            // ++*rxBuff;
         }
         // some sort of error (frame_begin not seen, frame_end seen too early, frame_end seen before frame_begin)
         else
@@ -176,7 +177,7 @@ struct AtmegaSensorValues atmega_parse_frame(struct AtmegaFrame frame)
     struct AtmegaSensorValues sv;
     char changed = convert_bytes_string_to_hex(frame.Changed, 1);
     char bumps = convert_string_to_hex(frame.Bumps_L_R);
-    char m_directions = convert_string_to_hex(frame.Motor_Directions);
+    char m_directions = convert_bytes_string_to_hex(frame.Motor_Directions, 1);
 
     // Check each bit of the changed byte to see which bytes have changes
     sv.Changes              = changed > 0;
@@ -251,24 +252,25 @@ struct AtmegaFrame atmega_read_byte_into_frame(struct AtmegaFrame frame, char by
         ++*frame.Weight;
     } else if (byteCount < 26) {
         frame.Battery = c;
-    } else if (byteCount < 27) {
-        frame.Motor_Directions = c;
-    } else if (byteCount < 29) {
+    } else if (byteCount < 28) {
+        *frame.Motor_Directions = c;
+        ++*frame.Motor_Directions;
+    } else if (byteCount < 30) {
         *frame.Motor_Speed_FL = c;
         ++*frame.Motor_Speed_FL;
-    } else if (byteCount < 31) {
+    } else if (byteCount < 32) {
         *frame.Motor_Speed_FR = c;
         ++*frame.Motor_Speed_FR;
-    // } else if (byteCount < 32) {
+    // } else if (byteCount < 34) {
     //     *frame.Motor_Speed_ML = c;
     //    ++*frame.Motor_Speed_ML;
-    // } else if (byteCount < 34) {
+    // } else if (byteCount < 36) {
     //     *frame.Motor_Speed_MR = c;
     //    ++*frame.Motor_Speed_MR;
-    // } else if (byteCount < 36) {
+    // } else if (byteCount < 38) {
     //     *frame.Motor_Speed_BL = c;
     //    ++*frame.Motor_Speed_BL;
-    // } else if (byteCount < 38) {
+    // } else if (byteCount < 40) {
     //     *frame.Motor_Speed_BR = c;
     //    ++*frame.Motor_Speed_BR;
     }

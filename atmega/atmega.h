@@ -5,11 +5,11 @@
  * Author: Kia Skretteberg
 
     Utilizing Frames of the following structure:
-    $FFFFF1FFFF1FFFF1FFFFA3FF1FFFFF^ 
+    $FFFFFFF1FFFF1FFFF1FFFFA3FF1FFFFFF^ 
 
     The above is broken up into 16 segments varying in the number of (string) bytes that represent them.
 
-    Segment 1: (1 byte)
+    Segment 1: (2 bytes)
     Indication of which of the 8 sensors have changed.
     The values that are indicated as being modified are the next 7 segments (segment 9 is excluded since it is just a battery indicator)
 
@@ -67,7 +67,7 @@
     Segment 9: (1 or 3 bytes)
     Battery level (if 1 byte, is 0/1; if 3 bytes, is an AtoD value similar to segment 8)
 
-    Segment 10: (1 byte)
+    Segment 10: (2 bytes)
     Direction of Motors (from encoders)
     Each motor is represented by a single bit of 0 or 1 indicated below, 
     where 1 indicates forward, 0 is backwards
@@ -115,7 +115,7 @@
 #define ATMEGA_PARITY    UART_PARITY_NONE
 
 #define ATMEGA_MAX_FRAMES_STORED 5   // max number of frames that can be stored before we start overwriting the oldest ones
-#define ATMEGA_FRAME_LENGTH      31  // not inclusive of start/end bytes
+#define ATMEGA_FRAME_LENGTH      32  // not inclusive of start/end bytes
 #define ATMEGA_START_BYTE        '$' // indicator of a start frame
 #define ATMEGA_END_BYTE          '^' // indicator of an end frame
 
@@ -150,7 +150,7 @@ struct AtmegaFrame {
     char Bumps_L_R;
     char Weight[4];
     char Battery;
-    char Motor_Directions;
+    char Motor_Directions[3];
     char Motor_Speed_FL[3];
     char Motor_Speed_FR[3];
     // char Motor_Speed_ML[3];
