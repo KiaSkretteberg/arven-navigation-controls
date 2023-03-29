@@ -61,10 +61,9 @@ int main() {
         bool obstacleRear = sensorValues.Bump_L || sensorValues.Bump_R;
 
         //dwm1001_request_position();
-        /*
         //pseudo navigation/object detection stuff
-        int turnSpeed = 15
-        int normalSpeed = 10;
+        int turnSpeed = 25;
+        int normalSpeed = 20;
         //prioritize drop detection first
         if(!dropImminentLeft && ! dropImminentRight){
             //second priority is bump sensors, that way we know whether or not we can reverse
@@ -169,6 +168,5 @@ int main() {
             motor_stop(Motor_FL);
             motor_stop(Motor_FR);            
         }
-        */
     }
 }

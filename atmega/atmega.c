@@ -18,6 +18,13 @@
 const uint TEST_LED_PIN = 16;
 const uint TEST_LED_PIN2 = 17;
 
+// the buffer that holds the bytes received during a single frame read
+volatile char rxBuff[ATMEGA_FRAME_LENGTH + 1];
+// count of bytes received as part of a single frame, reset with each frame start seen
+volatile char bytesReceived = 0;
+// flag indicating we saw the begin of a frame
+volatile char frame_begin = 0; 
+
 struct AtmegaFrame atmega_retrieve_frame(void);
 
 // returns the parsed struct value of the actual sensor values represented by the frame
@@ -35,6 +42,9 @@ long convert_bytes_string_to_hex(char * bytes, char startByteIndex);
 // returns -1 if the value can't be converted to 0-F
 // solution adapted from https://stackoverflow.com/questions/33982870/how-to-convert-char-array-to-hexadecimal
 char convert_string_to_hex(char c);
+
+// Parses the rxBuff into an AtmegaFrame
+void atmega_parse_bytes(void);
 
  
 /************************************************************************/
@@ -79,22 +89,22 @@ void atmega_init_communication(void)
 
 void atmega_receive_data(void)
 {
-    char bytesReceived = 0;
-    struct AtmegaFrame frame;
-    int frame_begin = 0; // flag indicating we saw the begin of a frame
-
-    while (uart_is_readable(ATMEGA_UART_ID)) 
+    if (uart_is_readable(ATMEGA_UART_ID)) 
     {
-        char buff[ATMEGA_FRAME_LENGTH + 1];
-        uint8_t ch = uart_getc(ATMEGA_UART_ID);
-            
+        char ch = uart_getc(ATMEGA_UART_ID);
 
         // start of frame seen for the first time
         if(ch == ATMEGA_START_BYTE && !frame_begin)
         {
+            struct AtmegaFrame frame;
+            // reset the buffer to be empty
+            strcpy(rxBuff, "");
+            // reset byte count
+            bytesReceived = 0;
+            // start frame seen
             frame_begin = 1;
+            // create a new frame
             frames[current_frame_index] = frame;
-            atmega_send_data("\nSTART");
         }
         // end frame seen after a start frame is seen and we got the expected number of bytes
         else if(ch == ATMEGA_END_BYTE && frame_begin && bytesReceived == ATMEGA_FRAME_LENGTH)
@@ -106,20 +116,20 @@ void atmega_receive_data(void)
                 current_frame_index = 0;
             // reset frame begin so we know that we are no longer reading a frame
             frame_begin = 0;
-            atmega_send_data("\nEND\n");
-            atmega_send_data(buff);
+            // read all the bytes into the frame
+            atmega_parse_bytes();
         }
         // data received after begin frame seen
         else if(frame_begin && bytesReceived < ATMEGA_FRAME_LENGTH) 
         {
-            frames[current_frame_index] = atmega_read_byte_into_frame(frames[current_frame_index], bytesReceived, ch);
+            // read the byte into the buffer to be parsed later
+            strcat(rxBuff, &ch);
+            // keep track of how many bytes have been received so we'll know when we reach the end of frame
             ++bytesReceived;
-            atmega_send_data("-");
         }
         // some sort of error (frame_begin not seen, frame_end seen too early, frame_end seen before frame_begin)
         else
         {
-            atmega_send_data("\nERROR");
             //TODO: What to do if there's a frame error?
             // Re-request data? Ignore and move on? Record error somewhere?
         }
@@ -145,10 +155,25 @@ struct AtmegaFrame atmega_retrieve_frame(void)
 /* Local  Implementation                                                */
 /************************************************************************/
 
+void atmega_parse_bytes(void)
+{
+    char bytesRead = 0;
+    atmega_send_data("\nPARSING...\n");
+    atmega_send_data(rxBuff);
+
+    //TODO: Copy the rxBuff first so that if another frame comes in while we're reading it won't break
+    while(*rxBuff)
+    {
+        frames[current_frame_index] = atmega_read_byte_into_frame(frames[current_frame_index], bytesRead, *rxBuff);
+        ++bytesRead;
+        ++*rxBuff;
+    }
+}
+
 struct AtmegaSensorValues atmega_parse_frame(struct AtmegaFrame frame)
 {
     struct AtmegaSensorValues sv;
-    char changed = convert_string_to_hex(frame.Changed);
+    char changed = convert_bytes_string_to_hex(frame.Changed, 1);
     char bumps = convert_string_to_hex(frame.Bumps_L_R);
     char m_directions = convert_string_to_hex(frame.Motor_Directions);
 
@@ -199,36 +224,37 @@ struct AtmegaSensorValues atmega_parse_frame(struct AtmegaFrame frame)
 
 struct AtmegaFrame atmega_read_byte_into_frame(struct AtmegaFrame frame, char byteCount, char c) 
 {
-    if(byteCount < 1) {
-        frame.Changed = c;
-    } else if(byteCount < 3) {
+    if(byteCount < 2) {
+        *frame.Changed = c;
+        ++*frame.Changed;
+    } else if(byteCount < 4) {
         *frame.IR_L = c;
         ++*frame.IR_L;
-    } else if (byteCount < 5) {
+    } else if (byteCount < 6) {
         *frame.IR_R = c;
         ++*frame.IR_R;
-    } else if (byteCount < 10) {
+    } else if (byteCount < 11) {
         *frame.Ultrasonic_L = c;
         ++*frame.Ultrasonic_L;
-    } else if (byteCount < 15) {
+    } else if (byteCount < 16) {
         *frame.Ultrasonic_C = c;
         ++*frame.Ultrasonic_C;
-    } else if (byteCount < 20) {
+    } else if (byteCount < 21) {
         *frame.Ultrasonic_R = c;
         ++*frame.Ultrasonic_R;
-    } else if (byteCount < 21) {
+    } else if (byteCount < 22) {
         frame.Bumps_L_R = c;
-    } else if (byteCount < 24) {
+    } else if (byteCount < 25) {
         *frame.Weight = c;
         ++*frame.Weight;
-    } else if (byteCount < 25) {
-        frame.Battery = c;
     } else if (byteCount < 26) {
+        frame.Battery = c;
+    } else if (byteCount < 27) {
         frame.Motor_Directions = c;
-    } else if (byteCount < 28) {
+    } else if (byteCount < 29) {
         *frame.Motor_Speed_FL = c;
         ++*frame.Motor_Speed_FL;
-    } else if (byteCount < 30) {
+    } else if (byteCount < 31) {
         *frame.Motor_Speed_FR = c;
         ++*frame.Motor_Speed_FR;
     // } else if (byteCount < 32) {
