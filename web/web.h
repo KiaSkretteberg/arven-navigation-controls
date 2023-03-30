@@ -8,7 +8,7 @@
  * Created: 2023-03-29
  * Author: Kia Skretteberg
  */
-#include "lwipopts.h"
+#include "lwip/apps/http_client.h"
 
 #define WEB_CLIENT_SERVER       "app.rx-arven.com"
 #define WEB_CLIENT_REQUEST_URL  "/api" 

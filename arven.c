@@ -14,8 +14,8 @@
 const uint BLUE_LED_PIN = 15;
 const uint YELLOW_LED_PIN = 16;
 const uint GREEN_LED_PIN = 17;
-const char WIFI_NETWORK_NAME[] = "mySSID";
-const char WIFI_PASSWORD[] = "myPassword";
+const char WIFI_NETWORK_NAME[] = "PH1";
+const char WIFI_PASSWORD[] = "12345678";
 
 int main() {
     struct AtmegaSensorValues sensorValues;
@@ -35,6 +35,8 @@ int main() {
     atmega_init_communication();
 
     motor_init_all();
+
+    sleep_ms(2000);
 
     web_init(WIFI_NETWORK_NAME, WIFI_PASSWORD, "Arven", NULL, NULL, NULL);
 

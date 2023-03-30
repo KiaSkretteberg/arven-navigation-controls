@@ -49,7 +49,7 @@ target_link_libraries(arven
     pico_stdlib 
     hardware_pwm)
 
-target_include_directories(arven PRIVATE
+target_include_directories(arven PUBLIC
     "${PROJECT_SOURCE_DIR}/atmega"
     "${PROJECT_SOURCE_DIR}/dwm1001"
     "${PROJECT_SOURCE_DIR}/encoders"

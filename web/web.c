@@ -27,7 +27,7 @@ const uint32_t AUTH = CYW43_AUTH_WPA2_MIXED_PSK;
 void result_callback(void *arg, httpc_result_t httpc_result,
         u32_t rx_content_len, u32_t srv_res, err_t err);
 
-err_t header_callback(httpc_state_t *connection, void *arg, 
+err_t headers_callback(httpc_state_t *connection, void *arg, 
     struct pbuf *hdr, u16_t hdr_len, u32_t content_len);
 
 err_t body_callback(void *arg, struct altcp_pcb *conn, 

@@ -115,7 +115,7 @@
 #define ATMEGA_PARITY    UART_PARITY_NONE
 
 #define ATMEGA_MAX_FRAMES_STORED 5   // max number of frames that can be stored before we start overwriting the oldest ones
-#define ATMEGA_FRAME_LENGTH      32  // not inclusive of start/end bytes
+#define ATMEGA_FRAME_LENGTH      31  // not inclusive of start/end bytes
 #define ATMEGA_START_BYTE        '$' // indicator of a start frame
 #define ATMEGA_END_BYTE          '^' // indicator of an end frame
 
