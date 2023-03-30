@@ -5,7 +5,7 @@
  * Author: Kia Skretteberg
 
     Utilizing Frames of the following structure:
-    $FFFFFFF1FFFF1FFFF1FFFFA3FF1FFFFFF^ 
+    $FFFFFF1FFFF1FFFF1FFFFA3FF1FFFFFF^ 
 
     The above is broken up into 16 segments varying in the number of (string) bytes that represent them.
 

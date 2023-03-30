@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "pico/stdlib.h"
-#include "hardware/gpio.h"
 #include "pico/binary_info.h"
+#include "hardware/gpio.h"
 #include "hardware/pwm.h"
 #include "motors.h"
 #include "dwm1001.h"
@@ -9,20 +9,19 @@
 #include "weight.h"
 #include "ultrasonic.h"
 #include "ir.h"
-//#include "pico/cyw43_arch.h"
+#include "web.h"
 
 const uint BLUE_LED_PIN = 15;
 const uint YELLOW_LED_PIN = 16;
 const uint GREEN_LED_PIN = 17;
+const char WIFI_NETWORK_NAME[] = "mySSID";
+const char WIFI_PASSWORD[] = "myPassword";
 
 int main() {
     struct AtmegaSensorValues sensorValues;
 
     stdio_init_all();
-    // if (cyw43_arch_init()) {
-    //     printf("Wi-Fi init failed");
-    //     return -1;
-    // }
+    
     gpio_init(BLUE_LED_PIN);
     gpio_set_dir(BLUE_LED_PIN, GPIO_OUT);
     
@@ -36,6 +35,8 @@ int main() {
     atmega_init_communication();
 
     motor_init_all();
+
+    web_init(WIFI_NETWORK_NAME, WIFI_PASSWORD, "Arven", NULL, NULL, NULL);
 
     while (true) {
         // TODO: Remove. Just for proof of life purposes
@@ -51,7 +52,7 @@ int main() {
         // (also used as an indication of a proper frame received)
         if(sensorValues.Changes) 
         {        
-            Weight_LoadState loadPresent = Weight_CheckForLoad(sensorValues.Weight); 
+            //Weight_LoadState loadPresent = Weight_CheckForLoad(sensorValues.Weight); 
 
             // check if there is an obstacle within 30cm
             bool obstacleCentre = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_L_Duration, 30);

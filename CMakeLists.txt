@@ -6,6 +6,7 @@ include(pico_sdk_import.cmake)
 project(arven C CXX ASM)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
+set(PICO_BOARD pico_w)
 
 # Initialize the SDK
 pico_sdk_init()
@@ -32,6 +33,7 @@ add_subdirectory(ir)
 add_subdirectory(motors)
 add_subdirectory(ultrasonic)
 add_subdirectory(weight)
+add_subdirectory(web)
 
 target_link_libraries(arven 
     atmega
@@ -41,6 +43,9 @@ target_link_libraries(arven
     motors
     ultrasonic
     weight
+    web
+    pico_cyw43_arch_lwip_threadsafe_background
+    pico_lwip_http
     pico_stdlib 
     hardware_pwm)
 
@@ -51,4 +56,5 @@ target_include_directories(arven PRIVATE
     "${PROJECT_SOURCE_DIR}/ir"
     "${PROJECT_SOURCE_DIR}/motors"
     "${PROJECT_SOURCE_DIR}/ultrasonic"
-    "${PROJECT_SOURCE_DIR}/weight")
+    "${PROJECT_SOURCE_DIR}/weight"
+    "${PROJECT_SOURCE_DIR}/web")
