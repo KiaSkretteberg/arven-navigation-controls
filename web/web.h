@@ -10,7 +10,7 @@
  */
 #include "lwip/apps/http_client.h"
 
-#define WEB_CLIENT_SERVER       "app.rx-arven.com"
+#define WEB_CLIENT_SERVER       "api.rx-arven.com"
 #define WEB_CLIENT_REQUEST_URL  "/api" 
 #define WEB_CLIENT_PORT         80 //TODO: Should/can we use a different port?
 

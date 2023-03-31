@@ -40,6 +40,8 @@ int main() {
 
     web_init(WIFI_NETWORK_NAME, WIFI_PASSWORD, "Arven", NULL, NULL, NULL);
 
+    // web_request("/check_schedule");
+
     while (true) {
         // TODO: Remove. Just for proof of life purposes
         gpio_put(BLUE_LED_PIN, 1);
