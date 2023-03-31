@@ -38,7 +38,7 @@ int main() {
 
     sleep_ms(2000);
 
-    web_init(WIFI_NETWORK_NAME, WIFI_PASSWORD, "Arven", NULL, NULL, NULL);
+    //web_init(WIFI_NETWORK_NAME, WIFI_PASSWORD, "Arven", NULL, NULL, NULL);
 
     // web_request("/check_schedule");
 
@@ -51,6 +51,10 @@ int main() {
 
         //retrieve current frame 
         sensorValues = atmega_retrieve_sensor_values();
+
+        char buff[10];
+        sprintf(buff, "%X", sensorValues.Changes);
+        printf(buff);
 
         // only check the values below and act on them if SOMETHING has changed 
         // (also used as an indication of a proper frame received)
