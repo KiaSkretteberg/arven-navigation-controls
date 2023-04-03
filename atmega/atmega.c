@@ -235,34 +235,64 @@ struct AtmegaFrame atmega_read_byte_into_frame(struct AtmegaFrame frame, char by
         frame.Changed[1] = c;
     if(byteCount == 2) 
         frame.IR_L[0] = c;
-    // if()
-    //     *frame.Changed = c;
-    //     ++*frame.Changed;
-    // } else if(byteCount < 4) {
-    //     *frame.IR_L = c;
-    //     ++*frame.IR_L;
-    // } else if (byteCount < 6) {
-    //     *frame.IR_R = c;
-    //     ++*frame.IR_R;
-    // } else if (byteCount < 11) {
-    //     *frame.Ultrasonic_L = c;
-    //     ++*frame.Ultrasonic_L;
-    // } else if (byteCount < 16) {
-    //     *frame.Ultrasonic_C = c;
-    //     ++*frame.Ultrasonic_C;
-    // } else if (byteCount < 21) {
-    //     *frame.Ultrasonic_R = c;
-    //     ++*frame.Ultrasonic_R;
-    // } else if (byteCount < 22) {
-    //     frame.Bumps_L_R = c;
-    // } else if (byteCount < 25) {
-    //     *frame.Weight = c;
-    //     ++*frame.Weight;
-    // } else if (byteCount < 26) {
-    //     frame.Battery = c;
-    // } else if (byteCount < 28) {
-    //     *frame.Motor_Directions = c;
-    //     ++*frame.Motor_Directions;
+    if(byteCount == 3)
+        frame.IR_L[1] = c;
+    if(byteCount == 4)
+        frame.IR_R[0] = c;
+    if(byteCount == 5)
+        frame.IR_R[1] = c;
+    if(byteCount == 6)
+        frame.Ultrasonic_L[0] = c;
+    if(byteCount == 7)
+        frame.Ultrasonic_L[1] = c;
+    if(byteCount == 8)
+        frame.Ultrasonic_L[2] = c;
+    if(byteCount == 9)
+        frame.Ultrasonic_L[3] = c;
+    if(byteCount == 10)
+        frame.Ultrasonic_L[4] = c;   
+    if(byteCount == 11)
+        frame.Ultrasonic_C[0] = c;   
+    if(byteCount == 12)
+        frame.Ultrasonic_C[1] = c;  
+    if(byteCount == 13)
+        frame.Ultrasonic_C[2] = c;  
+    if(byteCount == 14)
+        frame.Ultrasonic_C[3] = c;     
+    if(byteCount == 15)
+        frame.Ultrasonic_C[4] = c;   
+    if(byteCount == 16)
+        frame.Ultrasonic_R[0] = c;   
+    if(byteCount == 17)
+        frame.Ultrasonic_R[1] = c;  
+    if(byteCount == 18)
+        frame.Ultrasonic_R[2] = c;  
+    if(byteCount == 19)
+        frame.Ultrasonic_R[3] = c;  
+    if(byteCount == 20)
+        frame.Ultrasonic_R[4] = c;  
+    if(byteCount == 21)
+        frame.Bumps_L_R = c;  
+    if(byteCount == 22)
+        frame.Weight[0] = c;
+    if(byteCount == 23)
+        frame.Weight[1] = c;
+    if(byteCount == 24)
+        frame.Weight[2] = c;
+    if(byteCount == 25)
+        frame.Battery = c; //not sure 
+    if(byteCount == 26)
+        frame.Motor_Directions[0] = c;
+    if(byteCount == 27)
+        frame.Motor_Directions[1] = c;
+    if(byteCount == 28)
+        frame.Motor_Speed_FL[0] = c;
+    if(byteCount == 29)
+        frame.Motor_Speed_FL[1] = c;
+    if(byteCount == 30)
+        frame.Motor_Speed_FR[0] = c;
+    if(byteCount == 31)
+        frame.Motor_Speed_FR[1] = c;
     // } else if (byteCount < 30) {
     //     *frame.Motor_Speed_FL = c;
     //     ++*frame.Motor_Speed_FL;
