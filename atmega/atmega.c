@@ -160,15 +160,17 @@ void atmega_parse_bytes(void)
 {
     char bytesRead = 0;
     char buff[ATMEGA_FRAME_LENGTH + 1];
+    char * buffPointer;
     strcpy(buff, rxBuff);
     atmega_send_data("\nPARSING...\n");
     atmega_send_data(buff);
+    buffPointer = buff;
 
-    while(*buff)
+    while(*buffPointer)
     {
-        frames[current_frame_index] = atmega_read_byte_into_frame(frames[current_frame_index], bytesRead, *buff);
+        frames[current_frame_index] = atmega_read_byte_into_frame(frames[current_frame_index], bytesRead, *buffPointer);
         ++bytesRead;
-        ++*buff;
+        ++buffPointer;
     }
 }
 
@@ -227,40 +229,46 @@ struct AtmegaSensorValues atmega_parse_frame(struct AtmegaFrame frame)
 
 struct AtmegaFrame atmega_read_byte_into_frame(struct AtmegaFrame frame, char byteCount, char c) 
 {
-    if(byteCount < 2) {
-        *frame.Changed = c;
-        ++*frame.Changed;
-    } else if(byteCount < 4) {
-        *frame.IR_L = c;
-        ++*frame.IR_L;
-    } else if (byteCount < 6) {
-        *frame.IR_R = c;
-        ++*frame.IR_R;
-    } else if (byteCount < 11) {
-        *frame.Ultrasonic_L = c;
-        ++*frame.Ultrasonic_L;
-    } else if (byteCount < 16) {
-        *frame.Ultrasonic_C = c;
-        ++*frame.Ultrasonic_C;
-    } else if (byteCount < 21) {
-        *frame.Ultrasonic_R = c;
-        ++*frame.Ultrasonic_R;
-    } else if (byteCount < 22) {
-        frame.Bumps_L_R = c;
-    } else if (byteCount < 25) {
-        *frame.Weight = c;
-        ++*frame.Weight;
-    } else if (byteCount < 26) {
-        frame.Battery = c;
-    } else if (byteCount < 28) {
-        *frame.Motor_Directions = c;
-        ++*frame.Motor_Directions;
-    } else if (byteCount < 30) {
-        *frame.Motor_Speed_FL = c;
-        ++*frame.Motor_Speed_FL;
-    } else if (byteCount < 32) {
-        *frame.Motor_Speed_FR = c;
-        ++*frame.Motor_Speed_FR;
+    if(byteCount == 0)
+        frame.Changed[0] = c;
+    if(byteCount == 1)
+        frame.Changed[1] = c;
+    if(byteCount == 2) 
+        frame.IR_L[0] = c;
+    // if()
+    //     *frame.Changed = c;
+    //     ++*frame.Changed;
+    // } else if(byteCount < 4) {
+    //     *frame.IR_L = c;
+    //     ++*frame.IR_L;
+    // } else if (byteCount < 6) {
+    //     *frame.IR_R = c;
+    //     ++*frame.IR_R;
+    // } else if (byteCount < 11) {
+    //     *frame.Ultrasonic_L = c;
+    //     ++*frame.Ultrasonic_L;
+    // } else if (byteCount < 16) {
+    //     *frame.Ultrasonic_C = c;
+    //     ++*frame.Ultrasonic_C;
+    // } else if (byteCount < 21) {
+    //     *frame.Ultrasonic_R = c;
+    //     ++*frame.Ultrasonic_R;
+    // } else if (byteCount < 22) {
+    //     frame.Bumps_L_R = c;
+    // } else if (byteCount < 25) {
+    //     *frame.Weight = c;
+    //     ++*frame.Weight;
+    // } else if (byteCount < 26) {
+    //     frame.Battery = c;
+    // } else if (byteCount < 28) {
+    //     *frame.Motor_Directions = c;
+    //     ++*frame.Motor_Directions;
+    // } else if (byteCount < 30) {
+    //     *frame.Motor_Speed_FL = c;
+    //     ++*frame.Motor_Speed_FL;
+    // } else if (byteCount < 32) {
+    //     *frame.Motor_Speed_FR = c;
+    //     ++*frame.Motor_Speed_FR;
     // } else if (byteCount < 34) {
     //     *frame.Motor_Speed_ML = c;
     //    ++*frame.Motor_Speed_ML;
