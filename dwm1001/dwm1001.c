@@ -9,7 +9,19 @@
 #include "hardware/uart.h"
 #include "dwm1001.h"
 
+/************************************************************************/
+/* Local Definitions (private functions)                                */
+/************************************************************************/
+
+// Read the uart channel for the specified value and output the return value to the buffer
+// the expect_type matches a single byte from the datasheet 
+// which is followed by a byte indicating the number of bytes in the response
+// which is followed by the specified number of bytes
+// the buff will contain those response bytes only
 int read_value(uint8_t expect_type, uint8_t * buff);
+
+// Parse out a coordinate (x, y, z) as a 32 bit integer, starting from the startIdx of the buff, made up of individual 4 bytes
+long read_coord(uint8_t * buff, char startIdx);
 
 
 /************************************************************************/
@@ -35,10 +47,11 @@ void dwm1001_init_communication(void)
     // TODO: Is the FIFO needed?
 }
 
-void dwm1001_request_position(void)
+struct DWM1001_Position dwm1001_request_position(void)
 {
     uint8_t buff[20];
     uint8_t error;
+    struct DWM1001_Position coords;
     // dwm_loc_get      see 5.3.10
     uart_putc_raw(DWM1001_UART_ID, 0x0C);
     uart_putc_raw(DWM1001_UART_ID, 0x00);
@@ -47,9 +60,22 @@ void dwm1001_request_position(void)
     error = read_value(0x40, buff);
     // get the device's position
     error = read_value(0x41, buff);
-    // get the position to the anchors (can help in getting home... if home isn't 0,0)
+    // first 4 bytes are x, next 4 are y, next 4 are z, last 1 is quality(?)
+    // bytes represent 32 bit integer (measuring mm)
+    // example: 0x08 0x00 0x00 0x00    0x0B 0xFF 0xFF 0xFF    0x4C 0x00 0x00 0x00    0x00
+    // bytes come in reverse order (LSByte first)
+    // ~ x = -0.06, y = -0.03, z = 0.08
+    coords.x = read_coord(buff, 0);
+    coords.y = read_coord(buff, 4);
+    coords.z = read_coord(buff, 8);
+    // get the position to the anchors (not needed if home is 0,0,0 but may be beneficial)
     error = read_value(0x49, buff);
+    return coords;
 }
+
+/************************************************************************/
+/* Local  Implementation                                                */
+/************************************************************************/
 
 int read_value(uint8_t expect_type, uint8_t * buff)
 {
@@ -81,4 +107,13 @@ int read_value(uint8_t expect_type, uint8_t * buff)
     }
 
     return 0;
+}
+
+long read_coord(uint8_t * buff, char startIdx)
+{
+    long value = buff[startIdx];
+    value += buff[startIdx+1]<<8;
+    value += buff[startIdx+2]<<16;
+    value += buff[startIdx+3]<<24;
+    return value;
 }

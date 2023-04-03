@@ -5,10 +5,6 @@
  *
  * Created: 2023-03-20
  * Author: Kia Skretteberg
- * 
- * TODO: Test to see if we can communicate using the AD2 via UART
- * TODO: Listen to the uart1 channel rather than a separate channel to see if anything is 
- * being sent out
  */
 
 // We are using pins 0 and 1, but see the GPIO function select table in the
@@ -22,6 +18,15 @@
 #define DWM1001_STOP_BITS 1
 #define DWM1001_PARITY    UART_PARITY_NONE
 
+struct DWM1001_Position {
+    long x; //mm
+    long y; //mm
+    long z; //mm
+}
+
+// Initialize the UART Channel 1 with a baud rate of 115200 for communication with the DWM1001 dev board
 void dwm1001_init_communication(void);
 
-void dwm1001_request_position(void);
+// Send a request to the DWM1001 module for dwm_loc_get
+// Return the x/y/z coordinates returned as long values (in mm) on position struct
+struct DWM1001_Position dwm1001_request_position(void);

@@ -69,7 +69,7 @@ int main() {
 
             bool obstacleRear = sensorValues.Bump_L || sensorValues.Bump_R;
         
-            //dwm1001_request_position();
+            //struct DWM1001_Position position = dwm1001_request_position();
             //pseudo navigation/object detection stuff
             int turnSpeed = 25;
             int normalSpeed = 20;    
