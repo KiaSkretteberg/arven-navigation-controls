@@ -311,7 +311,7 @@ struct AtmegaFrame atmega_read_byte_into_frame(struct AtmegaFrame frame, char by
     // } else if (byteCount < 40) {
     //     *frame.Motor_Speed_BR = c;
     //    ++*frame.Motor_Speed_BR;
-    }
+    
 
     return frame;
 }

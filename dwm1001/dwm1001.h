@@ -22,7 +22,7 @@ struct DWM1001_Position {
     long x; //mm
     long y; //mm
     long z; //mm
-}
+};
 
 // Initialize the UART Channel 1 with a baud rate of 115200 for communication with the DWM1001 dev board
 void dwm1001_init_communication(void);
