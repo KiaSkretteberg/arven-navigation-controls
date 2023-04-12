@@ -126,7 +126,6 @@ void atmega_receive_data(void)
             rxBuff[bytesReceived] = ch;
             // keep track of how many bytes have been received so we'll know when we reach the end of frame
             ++bytesReceived;
-            // ++*rxBuff;
         }
         // some sort of error (frame_begin not seen, frame_end seen too early, frame_end seen before frame_begin)
         else
@@ -162,8 +161,8 @@ void atmega_parse_bytes(void)
     char buff[ATMEGA_FRAME_LENGTH + 1];
     char * buffPointer;
     strcpy(buff, rxBuff);
-    atmega_send_data("\nPARSING...\n");
-    atmega_send_data(buff);
+    printf("\nPARSING...\n");
+    printf(buff);
     buffPointer = buff;
 
     while(*buffPointer)
@@ -311,7 +310,7 @@ struct AtmegaFrame atmega_read_byte_into_frame(struct AtmegaFrame frame, char by
     // } else if (byteCount < 40) {
     //     *frame.Motor_Speed_BR = c;
     //    ++*frame.Motor_Speed_BR;
-    
+    //}
 
     return frame;
 }

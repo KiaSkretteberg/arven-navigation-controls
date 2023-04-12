@@ -109,10 +109,13 @@ int web_init(const char *ssid, const char *pass, const char *hostname,
 
 void web_request(char * uriParams)
 {
+    printf("Make request to: ");
+    printf(uriParams);
+    printf(strcat(uriParams, WEB_CLIENT_REQUEST_URL));
     err_t err = httpc_get_file_dns(
             WEB_CLIENT_SERVER,
             WEB_CLIENT_PORT,
-            strcat(WEB_CLIENT_REQUEST_URL, uriParams),
+            strcat(uriParams, WEB_CLIENT_REQUEST_URL),
             &settings,
             body_callback,
             NULL, //TODO: Pass a value to track this specific request
