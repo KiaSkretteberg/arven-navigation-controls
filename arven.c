@@ -44,6 +44,7 @@ int main() {
     //web_request("/check_schedule");
 
     while (true) {
+        char buff[20];
         //retrieve current frame 
         sensorValues = atmega_retrieve_sensor_values();
 
@@ -51,12 +52,12 @@ int main() {
         // (also used as an indication of a proper frame received)
         if(sensorValues.Changes) 
         {        
-            Weight_LoadState newLoadState = Weight_CheckForLoad(sensorValues.Weight); 
-            if(newLoadState == Weight_LoadPresent && newLoadState != previousLoadState) {
-                Weight_CheckForChange(sensorValues.Weight, 10);
-                // update the load state for later comparison
-                previousLoadState = newLoadState;
-            }
+            // Weight_LoadState newLoadState = Weight_CheckForLoad(sensorValues.Weight); 
+            // if(newLoadState == Weight_LoadPresent && newLoadState != previousLoadState) {
+            //     Weight_CheckForChange(sensorValues.Weight, 10);
+            //     // update the load state for later comparison
+            //     previousLoadState = newLoadState;
+            // }
 
             // check if there is an obstacle within 30cm
             bool obstacleLeft = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_L_Duration, 30);
@@ -72,13 +73,13 @@ int main() {
             struct DWM1001_Position position = dwm1001_request_position();
             //pseudo navigation/object detection stuff
             int turnSpeed = 25;
-            int normalSpeed = 20;    
-            
+            int normalSpeed = 20;  
+
             //prioritize drop detection first
             if(!dropImminentLeft && !dropImminentRight){
-                //printf("\nno drop");
+                // printf("\nno drop");
                 if(!obstacleCentre && !obstacleLeft && !obstacleRight) {
-                    //printf("\nno obstacle");
+                    printf("\nno obstacle");
                     motor_forward(Motor_FR, normalSpeed);
                     motor_forward(Motor_FL, normalSpeed); 
                 } else {
@@ -94,6 +95,7 @@ int main() {
                         //no object behind, but there is an object in front
                         if(obstacleCentre){                         //depends on space between object and arven
                             if((!obstacleLeft && !obstacleRight) || (obstacleLeft && obstacleRight)){
+                                printf("\nobstacle front");
                                 //assuming Motor_FL = left, Motor_FR = right
                                 //based on the xyz from the UWB module, we would set it to reverse left/right
                                 //so we can go around the object, just setting it to reverse for now though
@@ -105,6 +107,7 @@ int main() {
                             }
                             //if an object is detected in front of arven and to the left, we would want it to reverse right
                             if(obstacleLeft && !obstacleRight){
+                                printf("\nobstacle front and left");
                                 motor_stop(Motor_FL);
                                 motor_stop(Motor_FR);
                                 //wait x amount of seconds to make sure it stopped
@@ -113,6 +116,7 @@ int main() {
                             }
                             //if an object is detected in front of arven and to the right, we would want it to reverse left
                             if(!obstacleLeft && obstacleRight){
+                                printf("\nobstacle front and right");
                                 motor_stop(Motor_FL);
                                 motor_stop(Motor_FR);
                                 //wait x amount of seconds to make sure it stopped
@@ -124,6 +128,7 @@ int main() {
                             //if an object is detected left, and right, continue straight or reverse?
                             //probably depends on how much space is in between arven and the objects, etc
                             if(obstacleLeft && obstacleRight){
+                                printf("\nobstacle left and right");
                                 motor_stop(Motor_FL);
                                 motor_stop(Motor_FR);
                                 //wait x amount of seconds to make sure it stopped
@@ -132,6 +137,7 @@ int main() {
                             }
                             //turn right if we see an object on the left
                             if(obstacleLeft && !obstacleRight){
+                                printf("\nobstacle left");
                                 motor_stop(Motor_FL);
                                 motor_stop(Motor_FR);
                                 //wait x amount of seconds to make sure it stopped
@@ -140,6 +146,7 @@ int main() {
                             }
                             //turn left if there's only an object on the right
                             if(!obstacleLeft && obstacleRight){
+                                printf("\nobstacle right");
                                 motor_stop(Motor_FL);
                                 motor_stop(Motor_FR);
                                 //wait x amount of seconds to make sure it stopped
@@ -149,6 +156,7 @@ int main() {
                             }
                             //keep going forward if we detect no objects
                             if(!obstacleLeft && !obstacleRight){
+                                printf("\nno obstacles");
                                 motor_stop(Motor_FL);
                                 motor_stop(Motor_FR);
                                 //wait x amount of seconds to make sure it stopped
@@ -159,24 +167,25 @@ int main() {
                     }
                     //object detected behind
                     if(obstacleRear){
-                        //printf("\nobstacle behind");
+                        // printf("\nobstacle behind");
                         //not sure what to do if it's behind + in front? since you'd have to turn
                         //in such a way that there's a enough space in front/behind, which would 
                         //determine whether you reverse or go forward, etc
                         if(obstacleCentre){
-                        //printf("\nobstacle centre");
+                        // printf("\nobstacle centre");
                             //if it's surrounded, just stop? 
                             if(obstacleLeft && obstacleRight){
-                        //printf("\nso many obstacles");
+                        printf("\nobstacles everywhere");
                                 motor_stop(Motor_FL);
                                 motor_stop(Motor_FR);
                                 //wait x amount of seconds to make sure it stopped
                             }
                         //something behind, nothing in front
                         } else{
-                            //printf("\nno obstacle behind");
+                            // printf("\nno obstacle behind");
                             //nothing right/left
                             if(!obstacleLeft && !obstacleRight){
+                                printf("\nobstacle behind");
                                 motor_stop(Motor_FL);
                                 motor_stop(Motor_FR);
                                 //wait x amount of seconds to make sure it stopped
@@ -184,6 +193,7 @@ int main() {
                                 motor_forward(Motor_FL, normalSpeed);                              
                             }
                             if(obstacleLeft && !obstacleRight){
+                                printf("\nobstacle left and behind");
                                 motor_stop(Motor_FL);
                                 motor_stop(Motor_FR);
                                 //wait x amount of seconds to make sure it stopped
@@ -191,6 +201,7 @@ int main() {
                                 motor_forward(Motor_FL, normalSpeed);                            
                             }
                             if(!obstacleLeft && obstacleRight){
+                                printf("\nobstacle right and behind");
                                 motor_stop(Motor_FL);
                                 motor_stop(Motor_FR);
                                 //wait x amount of seconds to make sure it stopped
@@ -199,6 +210,7 @@ int main() {
                             }
                             //something behind, left, and right, go straight? depends on space
                             if(obstacleLeft && obstacleRight){
+                                printf("\nobstacle left, right, behind");
                                 motor_stop(Motor_FL);
                                 motor_stop(Motor_FR);
                                 //wait x amount of seconds to make sure it stopped
@@ -209,7 +221,7 @@ int main() {
                     }
                 }
             } else{
-                //printf("\ndrop");
+                printf("\ndrop");
                 //just stop if we're about to fall
                 motor_stop(Motor_FL);
                 motor_stop(Motor_FR);            

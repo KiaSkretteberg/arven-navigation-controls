@@ -6,6 +6,7 @@
  */
  
 #include <stdio.h>
+#include <math.h>
 #include <string.h>
 #include <ctype.h>
 #include "pico/stdlib.h"
@@ -85,6 +86,21 @@ void atmega_init_communication(void)
 
     // Now enable the UART to send interrupts - RX only
     uart_set_irq_enables(ATMEGA_UART_ID, true, false);
+
+    struct AtmegaFrame frame;
+    frame.Battery = '0';
+    frame.Bumps_L_R = 'C';
+    strcpy(frame.Changed, "24");
+    strcpy(frame.IR_L, "00");
+    strcpy(frame.IR_R, "00");
+    strcpy(frame.Motor_Directions, "00");
+    strcpy(frame.Motor_Speed_FL, "00");
+    strcpy(frame.Motor_Speed_FR, "00");
+    strcpy(frame.Ultrasonic_L, "1FFFF");
+    strcpy(frame.Ultrasonic_C, "1FFFF");
+    strcpy(frame.Ultrasonic_R, "1FFFF");
+    strcpy(frame.Weight, "000");
+    frames[0] = frame;
 }
 
 void atmega_receive_data(void)
@@ -175,6 +191,7 @@ void atmega_parse_bytes(void)
 
 struct AtmegaSensorValues atmega_parse_frame(struct AtmegaFrame frame)
 {
+    char buff[20];
     struct AtmegaSensorValues sv;
     char changed = convert_bytes_string_to_hex(frame.Changed, 1);
     char bumps = convert_string_to_hex(frame.Bumps_L_R);
@@ -317,15 +334,17 @@ struct AtmegaFrame atmega_read_byte_into_frame(struct AtmegaFrame frame, char by
 
 long convert_bytes_string_to_hex(char * bytes, char startByteIndex)
 {
+    char buff[50];
     char byteIndex = startByteIndex;
-    long value;
+    long value = 0;
     while(byteIndex >= 0)
     {
+        char c = convert_string_to_hex(*bytes);
         // starting from the MSB, add the current byte value to the return value
         // with the approrpiate position in significance
-        value = *bytes * (byteIndex > 0 ? (byteIndex * 16) : 1);
+        value += c * pow(16, byteIndex);
         // move to the next byte
-        ++*bytes;
+        ++bytes;
 
         // break out of the loop once we've finished processing the last one since we can't go below 0
         if(byteIndex == 0)
