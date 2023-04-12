@@ -15,6 +15,12 @@
 float calculateVoltage(int atodval);
 
 /************************************************************************/
+/* Global Variables                                                     */
+/************************************************************************/
+
+volatile float previousWeight = 0;
+
+/************************************************************************/
 /* Header Implementation                                                */
 /************************************************************************/
 
@@ -37,11 +43,11 @@ Weight_LoadState Weight_CheckForLoad(int atodval)
 	return voltage > Weight_MINV ? Weight_LoadPresent : Weight_LoadNotPresent;
 }
 
-Weight_Change Weight_CheckForChange(int atodval, float oldWeight, float doseWeight)
+Weight_Change Weight_CheckForChange(int atodval, float doseWeight)
 {
 	Weight_Change change;
 	float newWeight = Weight_CalculateMass(atodval);
-	float weightDifference = oldWeight - newWeight;
+	float weightDifference = previousWeight - newWeight;
 	
 	// The weight went up?? Track as no change because it's confusing
 	if(weightDifference < 0)
@@ -52,6 +58,9 @@ Weight_Change Weight_CheckForChange(int atodval, float oldWeight, float doseWeig
 	// Larger than a dose means something potentially bad happened
 	else
 		change = Weight_LargeChange;
+	
+	// store the new weight for later comparison
+	previousWeight = newWeight;
 	
 	return change;
 }

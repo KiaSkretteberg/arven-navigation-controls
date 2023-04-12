@@ -32,4 +32,4 @@ Weight_LoadState Weight_CheckForLoad(int atodval);
 
 // Check if the atodval indicates a change in weight compared to previous weight
 // and how it changed in relation to the weight of a dose (was it roughly a dose [smallchange], or much more [largechange])
-Weight_Change Weight_CheckForChange(int atodval, float oldWeight, float doseWeight);
+Weight_Change Weight_CheckForChange(int atodval, float doseWeight);

@@ -19,6 +19,7 @@ const char WIFI_PASSWORD[] = "12345678";
 
 int main() {
     struct AtmegaSensorValues sensorValues;
+    Weight_LoadState previousLoadState = Weight_LoadNotPresent;
 
     stdio_init_all();
     
@@ -38,17 +39,11 @@ int main() {
 
     sleep_ms(2000);
 
-    //web_init(WIFI_NETWORK_NAME, WIFI_PASSWORD, "Arven", NULL, NULL, NULL);
+    web_init(WIFI_NETWORK_NAME, WIFI_PASSWORD, "Arven", NULL, NULL, NULL);
 
-    // web_request("/check_schedule");
+    //web_request("/check_schedule");
 
     while (true) {
-        // TODO: Remove. Just for proof of life purposes
-        gpio_put(BLUE_LED_PIN, 1);
-        sleep_ms(250);
-        gpio_put(BLUE_LED_PIN, 0);
-        sleep_ms(250);
-
         //retrieve current frame 
         sensorValues = atmega_retrieve_sensor_values();
 
@@ -56,11 +51,16 @@ int main() {
         // (also used as an indication of a proper frame received)
         if(sensorValues.Changes) 
         {        
-            //Weight_LoadState loadPresent = Weight_CheckForLoad(sensorValues.Weight); 
+            Weight_LoadState newLoadState = Weight_CheckForLoad(sensorValues.Weight); 
+            if(newLoadState == Weight_LoadPresent && newLoadState != previousLoadState) {
+                Weight_CheckForChange(sensorValues.Weight, 10);
+                // update the load state for later comparison
+                previousLoadState = newLoadState;
+            }
 
             // check if there is an obstacle within 30cm
-            bool obstacleCentre = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_L_Duration, 30);
-            bool obstacleLeft = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_C_Duration, 30);
+            bool obstacleLeft = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_L_Duration, 30);
+            bool obstacleCentre = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_C_Duration, 30);
             bool obstacleRight = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_R_Duration, 30);
 
             // Check if the ground (50mm -- 5cm) is still there
@@ -69,23 +69,24 @@ int main() {
 
             bool obstacleRear = sensorValues.Bump_L || sensorValues.Bump_R;
         
-            //struct DWM1001_Position position = dwm1001_request_position();
+            struct DWM1001_Position position = dwm1001_request_position();
             //pseudo navigation/object detection stuff
             int turnSpeed = 25;
             int normalSpeed = 20;    
+            
             //prioritize drop detection first
             if(!dropImminentLeft && !dropImminentRight){
-                printf("\nno drop");
+                //printf("\nno drop");
                 if(!obstacleCentre && !obstacleLeft && !obstacleRight) {
-                    printf("\nno obstacle");
+                    //printf("\nno obstacle");
                     motor_forward(Motor_FR, normalSpeed);
                     motor_forward(Motor_FL, normalSpeed); 
                 } else {
-                    printf("\nobstacle");
+                    //printf("\nobstacle");
                     //second priority is bump sensors, that way we know whether or not we can reverse
                     //reverse = okay
                     if(!obstacleRear){
-                        printf("\nno obstacle behind");
+                        //printf("\nno obstacle behind");
                         //third priority is whether or not something in front of arven is detected
                         //something in front = reverse left/right/straight, nothing in front = keep going straight
                         // and take turns depending on the UWB location
@@ -158,22 +159,22 @@ int main() {
                     }
                     //object detected behind
                     if(obstacleRear){
-                        printf("\nobstacle behind");
+                        //printf("\nobstacle behind");
                         //not sure what to do if it's behind + in front? since you'd have to turn
                         //in such a way that there's a enough space in front/behind, which would 
                         //determine whether you reverse or go forward, etc
                         if(obstacleCentre){
-                        printf("\nobstacle centre");
+                        //printf("\nobstacle centre");
                             //if it's surrounded, just stop? 
                             if(obstacleLeft && obstacleRight){
-                        printf("\nso many obstacles");
+                        //printf("\nso many obstacles");
                                 motor_stop(Motor_FL);
                                 motor_stop(Motor_FR);
                                 //wait x amount of seconds to make sure it stopped
                             }
                         //something behind, nothing in front
                         } else{
-                            printf("\nno obstacle behind");
+                            //printf("\nno obstacle behind");
                             //nothing right/left
                             if(!obstacleLeft && !obstacleRight){
                                 motor_stop(Motor_FL);
@@ -208,7 +209,7 @@ int main() {
                     }
                 }
             } else{
-                printf("\ndrop");
+                //printf("\ndrop");
                 //just stop if we're about to fall
                 motor_stop(Motor_FL);
                 motor_stop(Motor_FR);            
