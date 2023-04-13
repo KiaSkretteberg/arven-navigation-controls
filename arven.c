@@ -41,7 +41,7 @@ int main() {
 
     sleep_ms(2000);
 
-    web_init(WIFI_NETWORK_NAME, WIFI_PASSWORD, "Arven", NULL, NULL, NULL);
+    //web_init(WIFI_NETWORK_NAME, WIFI_PASSWORD, "Arven", NULL, NULL, NULL);
 
     // TODO: Only run the navigation code if we have a schedule returned (schedule_id != 0)
     //schedule_id = web_request("/check_schedule");
@@ -85,7 +85,7 @@ int main() {
             //prioritize drop detection first
             if(!dropImminentLeft && !dropImminentRight){
                 // printf("\nno drop");
-                if(!obstacleCentre && !obstacleLeft && !obstacleRight) {
+                if(!obstacleCentre && !obstacleLeft && !obstacleRight && !obstacleRear) {
                     printf("\nno obstacle");
                     motor_forward(Motor_FR, normalSpeed);
                     motor_forward(Motor_FL, normalSpeed); 
@@ -182,11 +182,17 @@ int main() {
                         // printf("\nobstacle centre");
                             //if it's surrounded, just stop? 
                             if(obstacleLeft && obstacleRight){
-                        printf("\nobstacles everywhere");
+                                printf("\nobstacles everywhere");
                                 motor_stop(Motor_FL);
                                 motor_stop(Motor_FR);
                                 //wait x amount of seconds to make sure it stopped
                             }
+                            if(obstacleLeft && !obstacleRight){
+                                printf("\nobstacle behind, front, and left");
+                            }
+                            if(!obstacleLeft && obstacleRight){
+                                printf("\nobstacle behind, front, and right");
+                            }                          
                         //something behind, nothing in front
                         } else{
                             // printf("\nno obstacle behind");

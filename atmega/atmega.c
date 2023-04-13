@@ -89,7 +89,7 @@ void atmega_init_communication(void)
 
     struct AtmegaFrame frame;
     frame.Battery = '0';
-    frame.Bumps_L_R = 'C';
+    frame.Bumps_L_R = 'B';
     strcpy(frame.Changed, "24");
     strcpy(frame.IR_L, "00");
     strcpy(frame.IR_R, "00");
