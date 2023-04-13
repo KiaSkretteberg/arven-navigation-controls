@@ -11,26 +11,28 @@
 #include "ir.h"
 #include "web.h"
 
-const uint BLUE_LED_PIN = 15;
-const uint YELLOW_LED_PIN = 16;
-const uint GREEN_LED_PIN = 17;
+// const uint BLUE_LED_PIN = 15;
+// const uint YELLOW_LED_PIN = 16;
+// const uint GREEN_LED_PIN = 17;
 const char WIFI_NETWORK_NAME[] = "PH1";
 const char WIFI_PASSWORD[] = "12345678";
+const char DEVICE_SERIAL[] = "RX-AR2023-0001";
 
 int main() {
     struct AtmegaSensorValues sensorValues;
     Weight_LoadState previousLoadState = Weight_LoadNotPresent;
+    int schedule_id = 0; //may be populated during operation if a schedule is operating
 
     stdio_init_all();
     
-    gpio_init(BLUE_LED_PIN);
-    gpio_set_dir(BLUE_LED_PIN, GPIO_OUT);
+    // gpio_init(BLUE_LED_PIN);
+    // gpio_set_dir(BLUE_LED_PIN, GPIO_OUT);
     
-    gpio_init(YELLOW_LED_PIN);
-    gpio_set_dir(YELLOW_LED_PIN, GPIO_OUT);
+    // gpio_init(YELLOW_LED_PIN);
+    // gpio_set_dir(YELLOW_LED_PIN, GPIO_OUT);
     
-    gpio_init(GREEN_LED_PIN);
-    gpio_set_dir(GREEN_LED_PIN, GPIO_OUT);
+    // gpio_init(GREEN_LED_PIN);
+    // gpio_set_dir(GREEN_LED_PIN, GPIO_OUT);
 
     dwm1001_init_communication();
     atmega_init_communication();
@@ -41,7 +43,8 @@ int main() {
 
     web_init(WIFI_NETWORK_NAME, WIFI_PASSWORD, "Arven", NULL, NULL, NULL);
 
-    //web_request("/check_schedule");
+    // TODO: Only run the navigation code if we have a schedule returned (schedule_id != 0)
+    //schedule_id = web_request("/check_schedule");
 
     while (true) {
         char buff[20];
@@ -57,6 +60,8 @@ int main() {
             //     Weight_CheckForChange(sensorValues.Weight, 10);
             //     // update the load state for later comparison
             //     previousLoadState = newLoadState;
+            //      //TODO: log the delivery if the change indicates it was taken
+            //      //web_request("log_delivery/device/"+DEVICE_SERIAL+"/schedule_id/"+schedule_id);
             // }
 
             // check if there is an obstacle within 30cm
@@ -71,6 +76,8 @@ int main() {
             bool obstacleRear = sensorValues.Bump_L || sensorValues.Bump_R;
         
             struct DWM1001_Position position = dwm1001_request_position();
+            // TODO: retrieve the user location into somewhere in order to run comparisons against our position
+            //web_request("/get_user_location");
             //pseudo navigation/object detection stuff
             int turnSpeed = 25;
             int normalSpeed = 20;  
