@@ -29,8 +29,8 @@ float Weight_CalculateMass(int atodval)
 	float voltage = calculateVoltage(atodval);
 	// 1000.0 is the conversion factor for kg to g
 	// 9.81 is gravity
-	// g = N * (g/kg) * m/s^2
-	float max_weight = (Weight_MAXN * 1000.0 / 9.81);
+	// g = N * (g/kg) / m/s^2
+	float max_weight = (Weight_MAXN * 1000.0) / 9.81;
 	
 	float weight = (voltage / AREF) * max_weight; //TODO: Add fulcrum gain
 	
@@ -39,15 +39,27 @@ float Weight_CalculateMass(int atodval)
 
 Weight_LoadState Weight_CheckForLoad(int atodval)
 {	
+	if(atodval > MAX_ATODVAL) return Weight_LoadError;
+
 	float voltage = calculateVoltage(atodval);
+
 	return voltage > Weight_MINV ? Weight_LoadPresent : Weight_LoadNotPresent;
 }
 
 Weight_Change Weight_CheckForChange(int atodval, float doseWeight)
 {
+	char buff[20];
 	Weight_Change change;
 	float newWeight = Weight_CalculateMass(atodval);
 	float weightDifference = previousWeight - newWeight;
+	sprintf(buff, "\nnewWeight: %f", newWeight);
+	printf(buff);
+	sprintf(buff, "\npreviousWeight: %f", previousWeight);
+	printf(buff);
+	sprintf(buff, "\ndoseWeight: %f", doseWeight);
+	printf(buff);
+	sprintf(buff, "\nweightDifference: %f", weightDifference);
+	printf(buff);
 	
 	// The weight went up?? Track as no change because it's confusing
 	if(weightDifference < 0)
@@ -71,7 +83,7 @@ Weight_Change Weight_CheckForChange(int atodval, float doseWeight)
 
 float calculateVoltage(int atodval)
 {
-    float q = AREF / 1024.0; // 10 bit atod [1024]
+    float q = AREF / MAX_ATODVAL; // 10 bit atod [1024]
     float voltage = atodval * q; // min val (resting) 0.73V
 	return voltage;
 }

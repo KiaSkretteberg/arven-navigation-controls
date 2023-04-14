@@ -21,9 +21,15 @@ const char DEVICE_SERIAL[] = "RX-AR2023-0001";
 int main() {
     struct AtmegaSensorValues sensorValues;
     Weight_LoadState previousLoadState = Weight_LoadNotPresent;
-    int schedule_id = 0; //may be populated during operation if a schedule is operating
+    //int schedule_id = 0; //may be populated during operation if a schedule is operating
+    MotorDirection current_motor_direction_L = Motor_Stopped;
+    MotorDirection current_motor_direction_R = Motor_Stopped;
 
+    int turnSpeed = 25;
+    int normalSpeed = 20;  
+    
     stdio_init_all();
+
     
     // gpio_init(BLUE_LED_PIN);
     // gpio_set_dir(BLUE_LED_PIN, GPIO_OUT);
@@ -41,7 +47,7 @@ int main() {
 
     sleep_ms(2000);
 
-    //web_init(WIFI_NETWORK_NAME, WIFI_PASSWORD, "Arven", NULL, NULL, NULL);
+    web_init(WIFI_NETWORK_NAME, WIFI_PASSWORD, "Arven", NULL, NULL, NULL);
 
     // TODO: Only run the navigation code if we have a schedule returned (schedule_id != 0)
     //schedule_id = web_request("/check_schedule");
@@ -55,35 +61,70 @@ int main() {
         // (also used as an indication of a proper frame received)
         if(sensorValues.Changes) 
         {        
-            // Weight_LoadState newLoadState = Weight_CheckForLoad(sensorValues.Weight); 
-            // if(newLoadState == Weight_LoadPresent && newLoadState != previousLoadState) {
-            //     Weight_CheckForChange(sensorValues.Weight, 10);
-            //     // update the load state for later comparison
-            //     previousLoadState = newLoadState;
-            //      //TODO: log the delivery if the change indicates it was taken
-            //      //web_request("log_delivery/device/"+DEVICE_SERIAL+"/schedule_id/"+schedule_id);
-            // }
+            Weight_LoadState newLoadState = Weight_CheckForLoad(sensorValues.Weight); 
+
+            if(newLoadState == Weight_LoadPresent && newLoadState != previousLoadState) 
+            {
+                Weight_CheckForChange(sensorValues.Weight, 10);
+                 //TODO: log the delivery if the change indicates it was taken
+                 //web_request("log_delivery/device/"+DEVICE_SERIAL+"/schedule_id/"+schedule_id);
+            }
+            // update the load state for later comparison (only if it's not an error)
+            if(newLoadState != Weight_LoadError) previousLoadState = newLoadState;
 
             // check if there is an obstacle within 30cm
             bool obstacleLeft = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_L_Duration, 30);
             bool obstacleCentre = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_C_Duration, 30);
-            bool obstacleRight = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_R_Duration, 30);
+            bool obstacleRight = 0;//Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_R_Duration, 30);
 
             // Check if the ground (50mm -- 5cm) is still there
-            bool dropImminentLeft = IR_CheckForDrop(sensorValues.IR_L_Distance, 50); 
-            bool dropImminentRight = IR_CheckForDrop(sensorValues.IR_R_Distance, 50);
+            bool dropImminentLeft = IR_CheckForDrop(sensorValues.IR_L_Distance, 60); 
+            bool dropImminentRight = IR_CheckForDrop(sensorValues.IR_R_Distance, 60);
 
             bool obstacleRear = sensorValues.Bump_L || sensorValues.Bump_R;
         
-            struct DWM1001_Position position = dwm1001_request_position();
+            //struct DWM1001_Position position = dwm1001_request_position();
             // TODO: retrieve the user location into somewhere in order to run comparisons against our position
             //web_request("/get_user_location");
             //pseudo navigation/object detection stuff
-            int turnSpeed = 25;
-            int normalSpeed = 20;  
+
+            if(!dropImminentLeft && !dropImminentRight)
+            {
+                // printf("\nno drop");
+                // if(!obstacleCentre && !obstacleLeft && !obstacleRight) {
+                    // printf("\nno obstacle");
+                    if(current_motor_direction_R != Motor_Forward)
+                    {
+                        printf("\ngo forward right");
+                        current_motor_direction_R = Motor_Forward;
+                        motor_forward(Motor_FR, normalSpeed);
+                    }
+                    if(current_motor_direction_L != Motor_Forward)
+                    {
+                        printf("\ngo forward left");
+                        current_motor_direction_L = Motor_Forward;
+                        motor_forward(Motor_FL, normalSpeed); 
+                    }
+                // }
+            }
+            else
+            {
+                if(current_motor_direction_R != Motor_Stopped)
+                {
+                        printf("\nstop right");
+                    current_motor_direction_R = Motor_Stopped;
+                    motor_stop(Motor_FR);
+                }
+                if(current_motor_direction_L != Motor_Stopped)
+                {
+                        printf("\nstop left");
+                    motor_stop(Motor_FL);
+                    current_motor_direction_L = Motor_Stopped;
+                }
+            }
 
             //prioritize drop detection first
-            if(!dropImminentLeft && !dropImminentRight){
+            /*if(!dropImminentLeft && !dropImminentRight){
                 // printf("\nno drop");
                 if(!obstacleCentre && !obstacleLeft && !obstacleRight && !obstacleRear) {
                     printf("\nno obstacle");
@@ -108,6 +149,7 @@ int main() {
                                 //so we can go around the object, just setting it to reverse for now though
                                 motor_stop(Motor_FL);
                                 motor_stop(Motor_FR);
+
                                 //wait x amount of seconds to make sure it stopped
                                 motor_reverse(Motor_FL, turnSpeed); 
                                 motor_reverse(Motor_FR, turnSpeed);
@@ -164,9 +206,6 @@ int main() {
                             //keep going forward if we detect no objects
                             if(!obstacleLeft && !obstacleRight){
                                 printf("\nno obstacles");
-                                motor_stop(Motor_FL);
-                                motor_stop(Motor_FR);
-                                //wait x amount of seconds to make sure it stopped
                                 motor_forward(Motor_FR, normalSpeed);
                                 motor_forward(Motor_FL, normalSpeed);                        
                             }
@@ -198,10 +237,6 @@ int main() {
                             // printf("\nno obstacle behind");
                             //nothing right/left
                             if(!obstacleLeft && !obstacleRight){
-                                printf("\nobstacle behind");
-                                motor_stop(Motor_FL);
-                                motor_stop(Motor_FR);
-                                //wait x amount of seconds to make sure it stopped
                                 motor_forward(Motor_FR, normalSpeed);
                                 motor_forward(Motor_FL, normalSpeed);                              
                             }
@@ -238,7 +273,7 @@ int main() {
                 //just stop if we're about to fall
                 motor_stop(Motor_FL);
                 motor_stop(Motor_FR);            
-            }
+            }*/
         }
     }
 }

@@ -86,21 +86,6 @@ void atmega_init_communication(void)
 
     // Now enable the UART to send interrupts - RX only
     uart_set_irq_enables(ATMEGA_UART_ID, true, false);
-
-    struct AtmegaFrame frame;
-    frame.Battery = '0';
-    frame.Bumps_L_R = 'B';
-    strcpy(frame.Changed, "24");
-    strcpy(frame.IR_L, "00");
-    strcpy(frame.IR_R, "00");
-    strcpy(frame.Motor_Directions, "00");
-    strcpy(frame.Motor_Speed_FL, "00");
-    strcpy(frame.Motor_Speed_FR, "00");
-    strcpy(frame.Ultrasonic_L, "1FFFF");
-    strcpy(frame.Ultrasonic_C, "1FFFF");
-    strcpy(frame.Ultrasonic_R, "1FFFF");
-    strcpy(frame.Weight, "000");
-    frames[0] = frame;
 }
 
 void atmega_receive_data(void)
@@ -112,15 +97,12 @@ void atmega_receive_data(void)
         // start of frame seen for the first time
         if(ch == ATMEGA_START_BYTE)
         {
-            struct AtmegaFrame frame;
             // reset the buffer to be empty
             strcpy(rxBuff, "");
             // reset byte count
             bytesReceived = 0;
             // start frame seen
             frame_begin = 1;
-            // create a new frame
-            frames[current_frame_index] = frame;
         }
         // end frame seen after a start frame is seen and we got the expected number of bytes
         else if(ch == ATMEGA_END_BYTE && frame_begin && bytesReceived == ATMEGA_FRAME_LENGTH)
@@ -173,6 +155,7 @@ struct AtmegaFrame atmega_retrieve_frame(void)
 
 void atmega_parse_bytes(void)
 {
+    struct AtmegaFrame frame;
     char bytesRead = 0;
     char buff[ATMEGA_FRAME_LENGTH + 1];
     char * buffPointer;
@@ -181,12 +164,27 @@ void atmega_parse_bytes(void)
     printf(buff);
     buffPointer = buff;
 
+    frame.Battery = '1';
+    frame.Bumps_L_R = 'B';
+    strcpy(frame.Changed, "00");
+    strcpy(frame.IR_L, "FF");
+    strcpy(frame.IR_R, "FF");
+    strcpy(frame.Motor_Directions, "00");
+    strcpy(frame.Motor_Speed_FL, "00");
+    strcpy(frame.Motor_Speed_FR, "00");
+    strcpy(frame.Ultrasonic_L, "00000");
+    strcpy(frame.Ultrasonic_C, "00000");
+    strcpy(frame.Ultrasonic_R, "00000");
+    strcpy(frame.Weight, "000");
+
     while(*buffPointer)
     {
-        frames[current_frame_index] = atmega_read_byte_into_frame(frames[current_frame_index], bytesRead, *buffPointer);
+        frame = atmega_read_byte_into_frame(frame, bytesRead, *buffPointer);
         ++bytesRead;
         ++buffPointer;
     }
+    
+    frames[current_frame_index] = frame;
 }
 
 struct AtmegaSensorValues atmega_parse_frame(struct AtmegaFrame frame)

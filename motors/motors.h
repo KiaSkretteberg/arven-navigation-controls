@@ -7,21 +7,12 @@
  * Created: 2023-03-20
  * Author: Kia Skretteberg
  */
-#define M1 2    // GPIO 2 [pin 4]
-#define EN1 3   // GPIO 3 [pin 5]
+#define M1 10    // GPIO 10 [pin 14]
+#define EN1 11   // GPIO 11 [pin 15]
 
-#define M2 6    // GPIO 6 [pin 9]
-#define EN2 7   // GPIO 7 [pin 10]
-/*
-#define M1 2    // GPIO 2
-#define EN1 3   // GPIO 3
-#define M1 2    // GPIO 2
-#define EN1 3   // GPIO 3
-#define M1 2    // GPIO 2
-#define EN1 3   // GPIO 3
-#define M1 2    // GPIO 2
-#define EN1 3   // GPIO 3
-*/
+#define M2 8    // GPIO 8 [pin 11]
+#define EN2 9   // GPIO 9 [pin 12]
+
 
 #define WHEEL_DIAMETER 0.065 // in m
 #define MAX_RPM 140 // from datasheet for 36GP-555-27-EN motors, max rated torque speed
@@ -40,7 +31,8 @@ typedef enum {
  */
 typedef enum {
     Motor_Forward = 0,
-    Motor_Reverse = 1
+    Motor_Reverse = 1,
+    Motor_Stopped = -1
 } MotorDirection;
 
 /** \brief Selector for motor direction:
