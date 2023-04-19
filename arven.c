@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include "pico/stdlib.h"
 #include "pico/binary_info.h"
 #include "hardware/gpio.h"
@@ -16,20 +17,23 @@
 // const uint GREEN_LED_PIN = 17;
 const char WIFI_NETWORK_NAME[] = "PH1";
 const char WIFI_PASSWORD[] = "12345678";
-const char DEVICE_SERIAL[] = "RX-AR2023-0001";
 
 int main() {
+    int scheduleId = -1; //may be populated during operation if a schedule is operating
     struct AtmegaSensorValues sensorValues;
+    // keep track of previous state for the weight sensor so we can detect when it changes
     Weight_LoadState previousLoadState = Weight_LoadNotPresent;
-    //int schedule_id = 0; //may be populated during operation if a schedule is operating
-    MotorDirection current_motor_direction_L = Motor_Stopped;
-    MotorDirection current_motor_direction_R = Motor_Stopped;
+    // track the starting weight and number of doses available for use in calculating per-dose weight
+    float startingWeight = 0;
+    int numDoses = 0;
+    // monitor current state of motor so instructions are only sent for changes
+    MotorDirection currentMotorDirection_L = Motor_Stopped;
+    MotorDirection currentMotorDirection_R = Motor_Stopped;
 
     int turnSpeed = 25;
-    int normalSpeed = 20;  
+    int normalSpeed = 20; 
     
     stdio_init_all();
-
     
     // gpio_init(BLUE_LED_PIN);
     // gpio_set_dir(BLUE_LED_PIN, GPIO_OUT);
@@ -49,13 +53,37 @@ int main() {
 
     web_init(WIFI_NETWORK_NAME, WIFI_PASSWORD, "Arven", NULL, NULL, NULL);
 
-    // TODO: Only run the navigation code if we have a schedule returned (schedule_id != 0)
-    //schedule_id = web_request("/check_schedule");
-
     while (true) {
-        char buff[20];
-        //retrieve current frame 
+        if(scheduleId == -1)
+        {
+            web_request_check_schedule();
+            // capture the schedule id once the web request has finished
+            scheduleId = web_response_check_schedule();
+        }
+        else
+        {
+            if(numDoses <= 0) 
+            {
+                // capture the new dose amount once the web request has finished
+                numDoses = web_response_retrieve_dose_stats();
+
+                // calculate the new per-dose weight to be used when calculating the weight change
+                if(numDoses > 0 && startingWeight > 0)
+                {
+                    float doseWeight = Weight_DetermineDosage(startingWeight, numDoses);
+                }
+            }
+        }
+
+        // TODO: all of the code below should only run if schedule_id != -1
+        // retrieve current frame 
         sensorValues = atmega_retrieve_sensor_values();
+
+        if(!startingWeight && scheduleId != -1) 
+        {
+            startingWeight = Weight_CalculateMass(sensorValues.Weight);
+            web_request_retrieve_dose_stats(scheduleId);
+        }
 
         // only check the values below and act on them if SOMETHING has changed 
         // (also used as an indication of a proper frame received)
@@ -65,14 +93,30 @@ int main() {
 
             if(newLoadState == Weight_LoadPresent && newLoadState != previousLoadState) 
             {
-                Weight_CheckForChange(sensorValues.Weight, 10);
-                 //TODO: log the delivery if the change indicates it was taken
-                 //web_request("log_delivery/device/"+DEVICE_SERIAL+"/schedule_id/"+schedule_id);
+                Weight_Change change = Weight_CheckForChange(sensorValues.Weight);
+
+                switch(change)
+                {
+                    case Weight_RefillChange:
+                        
+                        // determine the new starting weight
+                        startingWeight = Weight_CalculateMass(sensorValues.Weight);
+                        numDoses = 0;
+                        web_request_retrieve_dose_stats(scheduleId);
+                        break;
+                    case Weight_LargeChange:
+                        // TODO: log an event because this change was a possible concern
+                    case Weight_SmallChange:
+                        web_request_log_delivery(scheduleId);
+                        break;
+                    default:
+                        break;
+                }
             }
             // update the load state for later comparison (only if it's not an error)
             if(newLoadState != Weight_LoadError) previousLoadState = newLoadState;
 
-            // check if there is an obstacle within 30cm
+            /*// check if there is an obstacle within 30cm
             bool obstacleLeft = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_L_Duration, 30);
             bool obstacleCentre = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_C_Duration, 30);
             bool obstacleRight = 0;//Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_R_Duration, 30);
@@ -121,7 +165,7 @@ int main() {
                     motor_stop(Motor_FL);
                     current_motor_direction_L = Motor_Stopped;
                 }
-            }
+            }*/
 
             //prioritize drop detection first
             /*if(!dropImminentLeft && !dropImminentRight){

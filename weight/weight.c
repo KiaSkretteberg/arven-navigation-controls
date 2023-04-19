@@ -19,6 +19,8 @@ float calculateVoltage(int atodval);
 /************************************************************************/
 
 volatile float previousWeight = 0;
+volatile float doseWeight = 0;
+const float BOTTLE_WEIGHT = 10; //measured in grams
 
 /************************************************************************/
 /* Header Implementation                                                */
@@ -37,6 +39,16 @@ float Weight_CalculateMass(int atodval)
 	return weight;
 }
 
+float Weight_DetermineDosage(float startingWeight, int numDoses)
+{
+	//TODO: We would want to improve it to allow a user to 
+	// configure which standard bottle they are using which would determine
+	// the base weight of the bottle, but we're just going to hardcode it to the one size for ease
+
+	doseWeight = (startingWeight - BOTTLE_WEIGHT) / numDoses;
+	return doseWeight;
+}
+
 Weight_LoadState Weight_CheckForLoad(int atodval)
 {	
 	if(atodval > MAX_ATODVAL) return Weight_LoadError;
@@ -46,24 +58,19 @@ Weight_LoadState Weight_CheckForLoad(int atodval)
 	return voltage > Weight_MINV ? Weight_LoadPresent : Weight_LoadNotPresent;
 }
 
-Weight_Change Weight_CheckForChange(int atodval, float doseWeight)
+Weight_Change Weight_CheckForChange(int atodval)
 {
-	char buff[20];
 	Weight_Change change;
 	float newWeight = Weight_CalculateMass(atodval);
 	float weightDifference = previousWeight - newWeight;
-	sprintf(buff, "\nnewWeight: %f", newWeight);
-	printf(buff);
-	sprintf(buff, "\npreviousWeight: %f", previousWeight);
-	printf(buff);
-	sprintf(buff, "\ndoseWeight: %f", doseWeight);
-	printf(buff);
-	sprintf(buff, "\nweightDifference: %f", weightDifference);
-	printf(buff);
+	printf("\nnewWeight: %f", newWeight);
+	printf("\npreviousWeight: %f", previousWeight);
+	printf("\ndoseWeight: %f", doseWeight);
+	printf("\nweightDifference: %f", weightDifference);
 	
-	// The weight went up?? Track as no change because it's confusing
+	// The weight went up, track as a refill
 	if(weightDifference < 0)
-		change = Weight_NoChange;
+		change = Weight_RefillChange;
 	// The difference is less than or equal to a dose (plus 10% for error)
 	else if(weightDifference <= (doseWeight * 1.1))
 		change = Weight_SmallChange;

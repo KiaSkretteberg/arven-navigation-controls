@@ -15,10 +15,17 @@
 /* Global Variables                                                     */
 /************************************************************************/
 
-volatile char buff[1000];
+volatile struct Web_Request requests[3];
+volatile char bodyBuff[1000];
+volatile char headerBuff[1000];
 httpc_connection_t settings;
 const uint32_t COUNTRY = CYW43_COUNTRY_CANADA;
 const uint32_t AUTH = CYW43_AUTH_WPA2_MIXED_PSK;
+
+const char DEVICE_SERIAL[] = "RX-AR2023-0001";
+
+const char PROPERTY_DELIM = ';';
+const char VALUE_DELIM = ':';
 
 /************************************************************************/
 /* Local Definitions (private functions)                                */
@@ -58,14 +65,14 @@ int web_init(const char *ssid, const char *pass, const char *hostname,
 
     int flashrate = 1000;
     int status = CYW43_LINK_UP + 1;
-    while (status >= 0 && status != CYW43_LINK_UP)
+    while (status != CYW43_LINK_UP)
     {
         int new_status = cyw43_tcpip_link_status(
              &cyw43_state,CYW43_ITF_STA);
         if (new_status != status)
         {
             status = new_status;
-            flashrate = flashrate / (status + 1);
+            if(status != -1) flashrate = flashrate / (status + 1);
             printf("connect status: %d %d\n", 
                                     status, flashrate);
         }
@@ -104,25 +111,121 @@ int web_init(const char *ssid, const char *pass, const char *hostname,
     }
     settings.result_fn = result_callback;
     settings.headers_done_fn = headers_callback;
+
+    // setup the check schedule request 
+    requests[Web_RequestType_CheckSchedule].type = Web_RequestType_CheckSchedule;
+    requests[Web_RequestType_CheckSchedule].active = 0;
+    strcpy(requests[Web_RequestType_CheckSchedule].body, "");
+    strcpy(requests[Web_RequestType_CheckSchedule].headers, "");
+    // setup the log delivery request
+    requests[Web_RequestType_LogDelivery].type = Web_RequestType_LogDelivery;
+    requests[Web_RequestType_LogDelivery].active = 0;
+    strcpy(requests[Web_RequestType_LogDelivery].body, "");
+    strcpy(requests[Web_RequestType_LogDelivery].headers, "");
+    // setup the retrieve dose stats request
+    requests[Web_RequestType_RetrieveDoseStats].type = Web_RequestType_RetrieveDoseStats;
+    requests[Web_RequestType_RetrieveDoseStats].active = 0;
+    strcpy(requests[Web_RequestType_RetrieveDoseStats].body, "");
+    strcpy(requests[Web_RequestType_RetrieveDoseStats].headers, "");
     return status;
 }
 
-void web_request(char * uriParams)
+void web_request(char * uriParams, Web_RequestType type)
 {
-    printf("Make request to: ");
-    printf(uriParams);
-    printf(strcat(uriParams, WEB_CLIENT_REQUEST_URL));
-    err_t err = httpc_get_file_dns(
-            WEB_CLIENT_SERVER,
-            WEB_CLIENT_PORT,
-            strcat(uriParams, WEB_CLIENT_REQUEST_URL),
-            &settings,
-            body_callback,
-            NULL, //TODO: Pass a value to track this specific request
-            NULL
-        ); 
-    
-    printf("status %d \n", err);
+    char uri[2049];
+    strcpy(uri, WEB_CLIENT_REQUEST_URL);
+    if(!requests[type].active) {
+        requests[type].active = 1;
+        printf("\nMake request to: ");
+        printf(strcat(uri, uriParams));
+        err_t err = httpc_get_file_dns(
+                WEB_CLIENT_SERVER,
+                WEB_CLIENT_PORT,
+                uri,
+                &settings,
+                body_callback,
+                &type, //TODO: Pass a value to track this specific request
+                NULL
+            ); 
+        
+        //printf("status %d \n", err);
+    }
+}
+
+void web_request_check_schedule(void)
+{
+    // build the url for checking schedule
+    char url[2048] = "/check_schedule/device/";
+    strcat(url, DEVICE_SERIAL);
+    // make the request to the specified url
+    web_request(url, Web_RequestType_CheckSchedule);
+}
+
+void web_request_retrieve_dose_stats(int schedule_id)
+{
+    // build up the url for the request
+    char url[2048] = "/retrieve_dose_stats/";
+    sprintf(url, "%s%i", url, schedule_id);
+    // request the new dose amount
+    web_request(url, Web_RequestType_RetrieveDoseStats);
+}
+
+void web_request_log_delivery(int schedule_id)
+{
+    // build the url for logging delivery
+    char url[2048] = "/log_delivery/device/";
+    strcat(url, DEVICE_SERIAL);
+    strcat(url, "/schedule_id/");
+    sprintf(url, "%s%i", url, schedule_id);
+    // make the request to the specified url
+    web_request(url, Web_RequestType_LogDelivery);
+}
+
+int web_response_check_schedule(void)
+{
+    Web_RequestType type = Web_RequestType_CheckSchedule;
+    if(requests[type].active && requests[type].complete) 
+    {
+        char userId[20] = "";       // "UserID:############"
+        char scheduleId[24] = "";   // "ScheduleID:############"
+        char * chunk;
+        int userIdValue = -1;
+        int scheduleIdValue = -1;
+
+        // split out the userid and scheduleid property/value pairs
+        strcpy(scheduleId, strchr(requests[type].body, PROPERTY_DELIM));
+        strcpy(userId, strtok(requests[type].body, ";"));
+        
+        // grab out the user id value from the property/value pair
+        chunk = strchr(userId, VALUE_DELIM);
+        ++chunk;
+        userIdValue = atoi(chunk);
+
+        // grab out the schedule id value from the property/value pair
+        chunk = strchr(scheduleId, VALUE_DELIM);
+        ++chunk;
+        scheduleIdValue = atoi(chunk);
+
+        // reset the request so a new one can be made
+        requests[type].active = 0;
+        strcpy(requests[type].headers, "");
+        strcpy(requests[type].body, "");
+        requests[type].complete = 0;
+
+        // return the schedule id
+        return scheduleIdValue;
+    }
+    return -1;
+}
+
+int web_response_retrieve_dose_stats(void)
+{
+    Web_RequestType type = Web_RequestType_RetrieveDoseStats;
+    if(requests[type].active && requests[type].complete) 
+    {
+        return atoi(requests[type].body);
+    }
+    return -1;
 }
 
 /************************************************************************/
@@ -132,28 +235,45 @@ void web_request(char * uriParams)
 void result_callback(void *arg, httpc_result_t httpc_result,
         u32_t rx_content_len, u32_t srv_res, err_t err)
 {
-    printf("transfer complete\n");
-    printf("local result=%d\n", httpc_result);
-    printf("http result=%d\n", srv_res);
+    Web_RequestType type = *((Web_RequestType *)arg);
+    // printf("\ntransfer complete\n");
+    // printf("local result=%d\n", httpc_result);
+    // printf("http result=%d\n", srv_res);
+    // if the request was successful, mark this request as complete
+    if(srv_res == 200) 
+    {
+        requests[type].complete = 1;
+    }
+    else
+    {
+        requests[type].active = 0;
+        strcpy(requests[type].headers, "");
+        strcpy(requests[type].body, "");
+        requests[type].complete = 0;
+    }
 }
 
 err_t headers_callback(httpc_state_t *connection, void *arg, 
     struct pbuf *hdr, u16_t hdr_len, u32_t content_len)
 {
-    printf("headers recieved\n");
-    printf("content length=%d\n", content_len);
-    printf("header length %d\n", hdr_len);
-    pbuf_copy_partial(hdr, buff, hdr->tot_len, 0);
-    printf("headers \n");
-    printf("%s", buff);
+    Web_RequestType type = *((Web_RequestType *)arg);
+    // printf("headers recieved\n");
+    // printf("content length=%d\n", content_len);
+    // printf("header length %d\n", hdr_len);
+    pbuf_copy_partial(hdr, headerBuff, hdr->tot_len, 0);
+    // printf("headers \n");
+    // printf("%s", buff);
+    // strcpy(requests[type].headers, buff);
     return ERR_OK;
 }
 
 err_t body_callback(void *arg, struct altcp_pcb *conn, 
                             struct pbuf *p, err_t err)
 {
-    printf("body\n");
-    pbuf_copy_partial(p, buff, p->tot_len, 0);
-    printf("%s", buff);
+    Web_RequestType type = *((Web_RequestType *)arg);
+    //printf("body\n");
+    pbuf_copy_partial(p, bodyBuff, p->tot_len, 0);
+    // printf("\nBUFF:\n%s", buff);
+    strcpy(requests[type].body, bodyBuff);
     return ERR_OK;
 }

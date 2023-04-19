@@ -15,6 +15,7 @@
 
 typedef enum
 {
+	Weight_RefillChange,
 	Weight_NoChange,
 	Weight_SmallChange,
 	Weight_LargeChange
@@ -30,9 +31,12 @@ typedef enum
 // Determine the weight (in grams) that the atodval represents
 float Weight_CalculateMass(int atodval);
 
+// Determine how much a single dose should weigh
+float Weight_DetermineDosage(float startingWeight, int numDoses);
+
 // Check if a load is currently being indicated by the atodval measured
 Weight_LoadState Weight_CheckForLoad(int atodval);
 
 // Check if the atodval indicates a change in weight compared to previous weight
 // and how it changed in relation to the weight of a dose (was it roughly a dose [smallchange], or much more [largechange])
-Weight_Change Weight_CheckForChange(int atodval, float doseWeight);
+Weight_Change Weight_CheckForChange(int atodval);
