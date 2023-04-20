@@ -76,7 +76,11 @@ uint motor_init(Motor motor)
 
 void motor_stop(Motor motor)
 {
+    pwm_set_gpio_level(get_pin(motor, Motor_PinType_Speed), 0);
+    sleep_ms(1);
     pwm_set_enabled(motor_slices[motor], false);
+    sleep_ms(1);
+    gpio_put(get_pin(motor, Motor_PinType_Speed), 0);
 }
 
 void motor_forward(Motor motor, float speed)

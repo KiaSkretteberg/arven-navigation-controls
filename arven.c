@@ -18,6 +18,18 @@
 const char WIFI_NETWORK_NAME[] = "PH1";
 const char WIFI_PASSWORD[] = "12345678";
 
+// monitor current state of motor so instructions are only sent for changes
+volatile MotorDirection currentMotorDirection_L = Motor_Stopped;
+volatile MotorDirection currentMotorDirection_R = Motor_Stopped;
+
+const int SPEED = 40;
+
+void turn_right();
+void turn_left();
+void go_forward();
+void go_backward();
+void stop();
+
 int main() {
     int scheduleId = -1; //may be populated during operation if a schedule is operating
     struct AtmegaSensorValues sensorValues;
@@ -26,12 +38,6 @@ int main() {
     // track the starting weight and number of doses available for use in calculating per-dose weight
     float startingWeight = 0;
     int numDoses = 0;
-    // monitor current state of motor so instructions are only sent for changes
-    MotorDirection currentMotorDirection_L = Motor_Stopped;
-    MotorDirection currentMotorDirection_R = Motor_Stopped;
-
-    int turnSpeed = 25;
-    int normalSpeed = 20; 
     
     stdio_init_all();
     
@@ -70,7 +76,7 @@ int main() {
                 // calculate the new per-dose weight to be used when calculating the weight change
                 if(numDoses > 0 && startingWeight > 0)
                 {
-                    float doseWeight = Weight_DetermineDosage(startingWeight, numDoses);
+                    Weight_DetermineDosage(startingWeight, numDoses);
                 }
             }
         }
@@ -116,10 +122,10 @@ int main() {
             // update the load state for later comparison (only if it's not an error)
             if(newLoadState != Weight_LoadError) previousLoadState = newLoadState;
 
-            /*// check if there is an obstacle within 30cm
-            bool obstacleLeft = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_L_Duration, 30);
-            bool obstacleCentre = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_C_Duration, 30);
-            bool obstacleRight = 0;//Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_R_Duration, 30);
+            // check if there is an obstacle within 30cm
+            bool obstacleLeft = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_L_Duration, 20);
+            bool obstacleCentre = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_C_Duration, 20);
+            bool obstacleRight = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_R_Duration, 20);
 
             // Check if the ground (50mm -- 5cm) is still there
             bool dropImminentLeft = IR_CheckForDrop(sensorValues.IR_L_Distance, 60); 
@@ -132,48 +138,12 @@ int main() {
             //web_request("/get_user_location");
             //pseudo navigation/object detection stuff
 
-            if(!dropImminentLeft && !dropImminentRight)
-            {
-                // printf("\nno drop");
-                // if(!obstacleCentre && !obstacleLeft && !obstacleRight) {
-                    // printf("\nno obstacle");
-                    if(current_motor_direction_R != Motor_Forward)
-                    {
-                        printf("\ngo forward right");
-                        current_motor_direction_R = Motor_Forward;
-                        motor_forward(Motor_FR, normalSpeed);
-                    }
-                    if(current_motor_direction_L != Motor_Forward)
-                    {
-                        printf("\ngo forward left");
-                        current_motor_direction_L = Motor_Forward;
-                        motor_forward(Motor_FL, normalSpeed); 
-                    }
-                // }
-            }
-            else
-            {
-                if(current_motor_direction_R != Motor_Stopped)
-                {
-                        printf("\nstop right");
-                    current_motor_direction_R = Motor_Stopped;
-                    motor_stop(Motor_FR);
-                }
-                if(current_motor_direction_L != Motor_Stopped)
-                {
-                        printf("\nstop left");
-                    motor_stop(Motor_FL);
-                    current_motor_direction_L = Motor_Stopped;
-                }
-            }*/
-
             //prioritize drop detection first
-            /*if(!dropImminentLeft && !dropImminentRight){
+            if(!dropImminentLeft && !dropImminentRight){
                 // printf("\nno drop");
                 if(!obstacleCentre && !obstacleLeft && !obstacleRight && !obstacleRear) {
                     printf("\nno obstacle");
-                    motor_forward(Motor_FR, normalSpeed);
-                    motor_forward(Motor_FL, normalSpeed); 
+                    go_forward(); 
                 } else {
                     //printf("\nobstacle");
                     //second priority is bump sensors, that way we know whether or not we can reverse
@@ -191,30 +161,27 @@ int main() {
                                 //assuming Motor_FL = left, Motor_FR = right
                                 //based on the xyz from the UWB module, we would set it to reverse left/right
                                 //so we can go around the object, just setting it to reverse for now though
-                                motor_stop(Motor_FL);
-                                motor_stop(Motor_FR);
+                                // motor_stop(Motor_FL);
+                                // motor_stop(Motor_FR);
 
                                 //wait x amount of seconds to make sure it stopped
-                                motor_reverse(Motor_FL, turnSpeed); 
-                                motor_reverse(Motor_FR, turnSpeed);
+                                go_backward();
                             }
                             //if an object is detected in front of arven and to the left, we would want it to reverse right
                             if(obstacleLeft && !obstacleRight){
                                 printf("\nobstacle front and left");
-                                motor_stop(Motor_FL);
-                                motor_stop(Motor_FR);
+                                // motor_stop(Motor_FL);
+                                // motor_stop(Motor_FR);
                                 //wait x amount of seconds to make sure it stopped
-                                motor_reverse(Motor_FR, turnSpeed);
-                                motor_reverse(Motor_FL, normalSpeed); 
+                                turn_right();
                             }
                             //if an object is detected in front of arven and to the right, we would want it to reverse left
                             if(!obstacleLeft && obstacleRight){
                                 printf("\nobstacle front and right");
-                                motor_stop(Motor_FL);
-                                motor_stop(Motor_FR);
+                                // motor_stop(Motor_FL);
+                                // motor_stop(Motor_FR);
                                 //wait x amount of seconds to make sure it stopped
-                                motor_reverse(Motor_FR, normalSpeed);
-                                motor_reverse(Motor_FL, turnSpeed);
+                                turn_left();
                             }
                         //no object behind or in front
                         } else{
@@ -222,36 +189,32 @@ int main() {
                             //probably depends on how much space is in between arven and the objects, etc
                             if(obstacleLeft && obstacleRight){
                                 printf("\nobstacle left and right");
-                                motor_stop(Motor_FL);
-                                motor_stop(Motor_FR);
+                                // motor_stop(Motor_FL);
+                                // motor_stop(Motor_FR);
                                 //wait x amount of seconds to make sure it stopped
-                                motor_forward(Motor_FR, normalSpeed);
-                                motor_forward(Motor_FL, normalSpeed);
+                                go_forward();
                             }
                             //turn right if we see an object on the left
                             if(obstacleLeft && !obstacleRight){
                                 printf("\nobstacle left");
-                                motor_stop(Motor_FL);
-                                motor_stop(Motor_FR);
+                                // motor_stop(Motor_FL);
+                                // motor_stop(Motor_FR);
                                 //wait x amount of seconds to make sure it stopped
-                                motor_forward(Motor_FR, turnSpeed);
-                                motor_forward(Motor_FL, normalSpeed);                    
+                                turn_right();                  
                             }
                             //turn left if there's only an object on the right
                             if(!obstacleLeft && obstacleRight){
                                 printf("\nobstacle right");
-                                motor_stop(Motor_FL);
-                                motor_stop(Motor_FR);
+                                // motor_stop(Motor_FL);
+                                // motor_stop(Motor_FR);
                                 //wait x amount of seconds to make sure it stopped
-                                motor_forward(Motor_FR, normalSpeed);
-                                motor_forward(Motor_FL, turnSpeed);    
+                                turn_left();   
 
                             }
                             //keep going forward if we detect no objects
                             if(!obstacleLeft && !obstacleRight){
                                 printf("\nno obstacles");
-                                motor_forward(Motor_FR, normalSpeed);
-                                motor_forward(Motor_FL, normalSpeed);                        
+                                go_forward();                      
                             }
                         }
                     }
@@ -266,8 +229,7 @@ int main() {
                             //if it's surrounded, just stop? 
                             if(obstacleLeft && obstacleRight){
                                 printf("\nobstacles everywhere");
-                                motor_stop(Motor_FL);
-                                motor_stop(Motor_FR);
+                                stop();
                                 //wait x amount of seconds to make sure it stopped
                             }
                             if(obstacleLeft && !obstacleRight){
@@ -281,33 +243,30 @@ int main() {
                             // printf("\nno obstacle behind");
                             //nothing right/left
                             if(!obstacleLeft && !obstacleRight){
-                                motor_forward(Motor_FR, normalSpeed);
-                                motor_forward(Motor_FL, normalSpeed);                              
+                                printf("\nobstacle behind");
+                                go_forward();                             
                             }
                             if(obstacleLeft && !obstacleRight){
                                 printf("\nobstacle left and behind");
-                                motor_stop(Motor_FL);
-                                motor_stop(Motor_FR);
+                                // motor_stop(Motor_FL);
+                                // motor_stop(Motor_FR);
                                 //wait x amount of seconds to make sure it stopped
-                                motor_forward(Motor_FR, turnSpeed);
-                                motor_forward(Motor_FL, normalSpeed);                            
+                                turn_right();                            
                             }
                             if(!obstacleLeft && obstacleRight){
                                 printf("\nobstacle right and behind");
-                                motor_stop(Motor_FL);
-                                motor_stop(Motor_FR);
+                                // motor_stop(Motor_FL);
+                                // motor_stop(Motor_FR);
                                 //wait x amount of seconds to make sure it stopped
-                                motor_forward(Motor_FL, turnSpeed);
-                                motor_forward(Motor_FR, normalSpeed);                            
+                                turn_left();                            
                             }
                             //something behind, left, and right, go straight? depends on space
                             if(obstacleLeft && obstacleRight){
                                 printf("\nobstacle left, right, behind");
-                                motor_stop(Motor_FL);
-                                motor_stop(Motor_FR);
+                                // motor_stop(Motor_FL);
+                                // motor_stop(Motor_FR);
                                 //wait x amount of seconds to make sure it stopped
-                                motor_forward(Motor_FR, normalSpeed);
-                                motor_forward(Motor_FL, normalSpeed);                            
+                                go_forward();                          
                             }
                         }
                     }
@@ -315,9 +274,89 @@ int main() {
             } else{
                 printf("\ndrop");
                 //just stop if we're about to fall
-                motor_stop(Motor_FL);
-                motor_stop(Motor_FR);            
-            }*/
+                stop();           
+            }
         }
+    }
+}
+
+void turn_right()
+{
+
+    if(currentMotorDirection_R != Motor_Reverse)
+    {
+        printf("\ngo backward right");
+        currentMotorDirection_R = Motor_Reverse;
+        motor_reverse(Motor_FR, SPEED);
+    }
+    if(currentMotorDirection_L != Motor_Forward)
+    {
+        printf("\ngo forward left");
+        currentMotorDirection_L = Motor_Forward;
+        motor_forward(Motor_FL, SPEED); 
+    }
+}
+
+void turn_left()
+{
+    if(currentMotorDirection_R != Motor_Forward)
+    {
+        printf("\ngo forward right");
+        currentMotorDirection_R = Motor_Forward;
+        motor_forward(Motor_FR, SPEED);
+    }
+    if(currentMotorDirection_L != Motor_Reverse)
+    {
+        printf("\ngo backward left");
+        currentMotorDirection_L = Motor_Reverse;
+        motor_reverse(Motor_FL, SPEED); 
+    }
+}
+
+void go_forward()
+{
+    if(currentMotorDirection_R != Motor_Forward)
+    {
+        printf("\ngo forward right");
+        currentMotorDirection_R = Motor_Forward;
+        motor_forward(Motor_FR, SPEED);
+    }
+    if(currentMotorDirection_L != Motor_Forward)
+    {
+        printf("\ngo forward left");
+        currentMotorDirection_L = Motor_Forward;
+        motor_forward(Motor_FL, SPEED); 
+    }
+}
+
+void go_backward()
+{
+    if(currentMotorDirection_R != Motor_Reverse)
+    {
+        printf("\ngo backward right");
+        currentMotorDirection_R = Motor_Reverse;
+        motor_reverse(Motor_FR, SPEED);
+    }
+    if(currentMotorDirection_L != Motor_Reverse)
+    {
+        printf("\ngo backward left");
+        currentMotorDirection_L = Motor_Reverse;
+        motor_reverse(Motor_FL, SPEED); 
+    }
+}
+
+void stop()
+{
+    if(currentMotorDirection_R != Motor_Stopped)
+    {
+        printf("\nstop right");
+        currentMotorDirection_R = Motor_Stopped;
+        motor_stop(Motor_FR);
+    }
+    if(currentMotorDirection_L != Motor_Stopped)
+    {
+        printf("\nstop left");
+        currentMotorDirection_L = Motor_Stopped;
+        motor_stop(Motor_FL); 
     }
 }
