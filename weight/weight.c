@@ -34,7 +34,7 @@ float Weight_CalculateMass(int atodval)
 	// g = N * (g/kg) / m/s^2
 	float max_weight = (Weight_MAXN * 1000.0) / 9.81;
 	
-	float weight = (voltage / AREF) * max_weight; //TODO: Add fulcrum gain
+	float weight = (voltage / AREF) * max_weight;
 	
 	return weight;
 }
@@ -71,6 +71,7 @@ Weight_Change Weight_CheckForChange(int atodval)
 	// The weight went up, track as a refill
 	if(weightDifference < 0)
 		change = Weight_RefillChange;
+	// TODO: if it's too much below a dose, should it track?
 	// The difference is less than or equal to a dose (plus 10% for error)
 	else if(weightDifference <= (doseWeight * 1.1))
 		change = Weight_SmallChange;

@@ -69,6 +69,10 @@ int main() {
         // we have a schedule, we need to find the user and check dosage stats
         else
         {
+            // get the frame info from the atmega
+            // TODO: We should toggle control of the atmega code detecting the sensors based on if we want data
+            sensorValues = atmega_retrieve_sensor_values();
+
             if(numDoses <= 0) 
             {
                 // capture the new dose amount once the web request has finished
@@ -77,21 +81,19 @@ int main() {
                 // calculate the new per-dose weight to be used when calculating the weight change
                 if(numDoses > 0 && startingWeight > 0)
                 {
-                    Weight_DetermineDosage(startingWeight, numDoses);
+                    float doseWeight = Weight_DetermineDosage(startingWeight, numDoses);
+                    printf("\ndoseWeight: %f", doseWeight);
                 }
             }
 
             // if we don't have a starting weight, log the current weight as the starting weight
-            // then determine how much a single dose should weight based on amount of doses remaining
+            // then determine how much a single dose should weigh based on amount of doses remaining
             if(!startingWeight) 
             {
                 startingWeight = Weight_CalculateMass(sensorValues.Weight);
+                printf("\nstartingWeight: %f", startingWeight);
                 web_request_retrieve_dose_stats(scheduleId);
             }
-
-            // get the frame info from the atmega
-            // TODO: We should toggle control of the atmega code detecting the sensors based on if we want data
-            sensorValues = atmega_retrieve_sensor_values();
             
             // if there were changes in the sensor values, react to them
             //TODO: This should detect specific changes but right now it's hardcoded and essentially ignored
@@ -111,6 +113,7 @@ int main() {
                     {
                         // the change increased the weight so the medication was refilled
                         case Weight_RefillChange:
+                            printf("\nRefill triggered");
                             // determine the new starting weight
                             startingWeight = Weight_CalculateMass(sensorValues.Weight);
                             numDoses = 0;
@@ -119,9 +122,11 @@ int main() {
                             break;
                         // the change was too big and may indicate an overdose, but we'll still log a delivery
                         case Weight_LargeChange:
+                            printf("\nlarge change detected");
                             // TODO: log an event because this change was a possible concern
                         // the change was normal, just log a delivery
                         case Weight_SmallChange:
+                            printf("\nnormal dose detected");
                             web_request_log_delivery(scheduleId);
                             break;
                         // any other change doesn't matter and may have been a hiccup
