@@ -33,8 +33,8 @@ typedef enum
 
 typedef enum
 {
-    NavigationResult_Success,
-    NavigationResult_Failure,
+    NavigationResult_Complete,
+    NavigationResult_Incomplete,
     NavigationResult_Stuck
 } NavigationResult;
 
@@ -43,14 +43,18 @@ typedef enum
 /* Global Variables                                                     */
 /************************************************************************/
 
+// Wifi details
 const char WIFI_NETWORK_NAME[] = "PH1";
 const char WIFI_PASSWORD[] = "12345678";
 
-// monitor current state of motor so instructions are only sent for changes
-volatile MotorDirection currentMotorDirection_L = Motor_Stopped;
-volatile MotorDirection currentMotorDirection_R = Motor_Stopped;
-
+// Motor speed, in cm/s
 const int SPEED = 40;
+
+// How long the robot can be "stopped" before it's considered stuck
+const int STUCK_DURATION = 60000; //1 minute (60s ==> 60,000ms) TODO: This isn't actually true
+
+// monitor current state of motor so instructions are only sent for changes
+volatile MotionState currentRobotMotionState = MotionState_ToBeDetermined;
 
 // user's current position, checked every 500ms
 volatile struct DWM1001_Position userPosition;
@@ -59,7 +63,7 @@ volatile struct DWM1001_Position userPosition;
 /* Local Definitions (private functions)                                */
 /************************************************************************/
 
-bool navigating_to_user(struct AtmegaSensorValues sensorValues);
+NavigationResult navigating_to_user(struct AtmegaSensorValues sensorValues);
 void navigating_home(struct AtmegaSensorValues sensorValues);
 void delivering_payload(struct AtmegaSensorValues sensorValues);
 MotionState interpret_sensors(struct AtmegaSensorValues sensorValues);
@@ -92,36 +96,32 @@ int main() {
 
     while (true) 
     {
+        if (robotState == RobotState_NavigatingHome ||
+            robotState == RobotState_DeliveringPayload ||
+            robotState == RobotState_NavigatingToUser)
+        {
+            // get the frame info from the atmega
+            // TODO: We should toggle control of the atmega code detecting the sensors based on if we want data
+            sensorValues = atmega_retrieve_sensor_values();
+        }
+
         switch(robotState)
         {
             case RobotState_Idle:
-                web_request_check_schedule();
-                // capture the schedule id once the web request has finished
-                scheduleId = web_response_check_schedule();
+                scheduleId = idle();
                 if(scheduleId != -1)
                     robotState = RobotState_NavigatingToUser;
                 break;
             case RobotState_NavigatingToUser:
-                // get the frame info from the atmega
-                // TODO: We should toggle control of the atmega code detecting the sensors based on if we want data
-                sensorValues = atmega_retrieve_sensor_values();
 
                 bool done = navigating_to_user(sensorValues);
                 // if(done)
                 //     robotState = DeliveringPayload;
                 break;
             case RobotState_DeliveringPayload:
-                // get the frame info from the atmega
-                // TODO: We should toggle control of the atmega code detecting the sensors based on if we want data
-                sensorValues = atmega_retrieve_sensor_values();
-
                 delivering_payload(sensorValues);
                 break;
             case RobotState_NavigatingHome:
-                // get the frame info from the atmega
-                // TODO: We should toggle control of the atmega code detecting the sensors based on if we want data
-                sensorValues = atmega_retrieve_sensor_values();
-
                 navigating_home(sensorValues);
                 break;
         }
@@ -132,16 +132,30 @@ int main() {
 /* Local  Implementation                                                */
 /************************************************************************/
 
-bool navigating_to_user(struct AtmegaSensorValues sensorValues)
+int idle()
 {
-    bool done = false;
+    web_request_check_schedule();
+    // capture the schedule id once the web request has finished
+    return web_response_check_schedule();
+}
+
+NavigationResult navigating_to_user(struct AtmegaSensorValues sensorValues)
+{
+    NavigationResult result = NavigationResult_Incomplete;
+    static stoppedCount = 0;
+    
     MotionState state = interpret_sensors(sensorValues);
     if(state == MotionState_Stop)
     {
         stop();
+        ++stoppedCount;
+        if(stoppedCount == STUCK_DURATION)
+            result = NavigationResult_Stuck;
     }
     else
     {
+        //reset the stop count
+        stoppedCount = 0;
         // struct DWM1001_Position position = dwm1001_request_position();
         // //TODO: check user's position periodically
         // if(!userPosition.set) {
@@ -179,11 +193,11 @@ bool navigating_to_user(struct AtmegaSensorValues sensorValues)
         // }
         // else
         // {
-        //     done = true;
+        //     result = NavigationResult_Complete;
         //     stop();
         // }
     }   
-    return done;
+    return result;
 }
 
 void navigating_home(struct AtmegaSensorValues sensorValues)
@@ -365,80 +379,55 @@ MotionState interpret_sensors(struct AtmegaSensorValues sensorValues)
 
 void turn_right()
 {
-    if(currentMotorDirection_R != Motor_Reverse)
+    if(currentRobotMotionState != MotionState_TurnRight)
     {
         printf("\ngo backward right");
-        currentMotorDirection_R = Motor_Reverse;
         motor_reverse(Motor_FR, SPEED);
-    }
-    if(currentMotorDirection_L != Motor_Forward)
-    {
         printf("\ngo forward left");
-        currentMotorDirection_L = Motor_Forward;
         motor_forward(Motor_FL, SPEED); 
     }
 }
 
 void turn_left()
 {
-    if(currentMotorDirection_R != Motor_Forward)
+    if(currentRobotMotionState != MotionState_TurnLeft)
     {
         printf("\ngo forward right");
-        currentMotorDirection_R = Motor_Forward;
         motor_forward(Motor_FR, SPEED);
-    }
-    if(currentMotorDirection_L != Motor_Reverse)
-    {
         printf("\ngo backward left");
-        currentMotorDirection_L = Motor_Reverse;
         motor_reverse(Motor_FL, SPEED); 
     }
 }
 
 void go_forward()
 {
-    if(currentMotorDirection_R != Motor_Forward)
+    if(currentRobotMotionState != MotionState_Forward)
     {
         printf("\ngo forward right");
-        currentMotorDirection_R = Motor_Forward;
         motor_forward(Motor_FR, SPEED);
-    }
-    if(currentMotorDirection_L != Motor_Forward)
-    {
         printf("\ngo forward left");
-        currentMotorDirection_L = Motor_Forward;
         motor_forward(Motor_FL, SPEED); 
     }
 }
 
 void go_backward()
 {
-    if(currentMotorDirection_R != Motor_Reverse)
+    if(currentRobotMotionState != MotionState_Reverse)
     {
         printf("\ngo backward right");
-        currentMotorDirection_R = Motor_Reverse;
         motor_reverse(Motor_FR, SPEED);
-    }
-    if(currentMotorDirection_L != Motor_Reverse)
-    {
         printf("\ngo backward left");
-        currentMotorDirection_L = Motor_Reverse;
         motor_reverse(Motor_FL, SPEED); 
     }
 }
 
 void stop()
 {
-    if(currentMotorDirection_R != Motor_Stopped)
+    if(currentRobotMotionState != MotionState_Stop)
     {
         printf("\nstop right");
-        currentMotorDirection_R = Motor_Stopped;
         motor_stop(Motor_FR);
-    }
-    if(currentMotorDirection_L != Motor_Stopped)
-    {
         printf("\nstop left");
-        currentMotorDirection_L = Motor_Stopped;
         motor_stop(Motor_FL); 
     }
 }
