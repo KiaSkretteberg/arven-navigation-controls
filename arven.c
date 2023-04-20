@@ -260,10 +260,13 @@ NavigationResult navigate(struct AtmegaSensorValues sensorValues, struct DWM1001
         
         // struct DWM1001_Position robotPosition = dwm1001_request_position();
         
+        //basically we would want to find the difference between the two points, so
+        //we would take the absolute value of the difference between the two since we
+        //don't care about magnitude when it comes to how close they are to each other
         //  if (robotPosition.set && destinationPosition.set && 
-        //     robotPosition.x != destinationPosition.x && 
-        //     robotPosition.y != destinationPosition.y &&
-        //     robotPosition.z != destinationPosition.z)
+        //     abs(robotPosition.x - destinationPosition.x) <= 20 && 
+        //     abs(robotPosition.y - destinationPosition.y <= 20) &&
+        //     abs(robotPosition.z - destinationPosition.z) <= 20)
         // {
             switch(state)
             {
