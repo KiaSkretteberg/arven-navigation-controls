@@ -56,17 +56,16 @@ const int STUCK_DURATION = 60000; //1 minute (60s ==> 60,000ms) TODO: This isn't
 // monitor current state of motor so instructions are only sent for changes
 volatile MotionState currentRobotMotionState = MotionState_ToBeDetermined;
 
-// user's current position, checked every 500ms
-volatile struct DWM1001_Position userPosition;
-
 /************************************************************************/
 /* Local Definitions (private functions)                                */
 /************************************************************************/
 
 NavigationResult navigating_to_user(struct AtmegaSensorValues sensorValues);
-void navigating_home(struct AtmegaSensorValues sensorValues);
+NavigationResult navigating_home(struct AtmegaSensorValues sensorValues);
 void delivering_payload(struct AtmegaSensorValues sensorValues);
 MotionState interpret_sensors(struct AtmegaSensorValues sensorValues);
+NavigationResult navigate(struct AtmegaSensorValues sensorValues, struct DWM1001_Position destination);
+void act_on_motion_state(MotionState action);
 void turn_right();
 void turn_left();
 void go_forward();
@@ -113,16 +112,21 @@ int main() {
                     robotState = RobotState_NavigatingToUser;
                 break;
             case RobotState_NavigatingToUser:
-
-                bool done = navigating_to_user(sensorValues);
-                // if(done)
-                //     robotState = DeliveringPayload;
+                NavigationResult result = navigating_to_user(sensorValues);
+                if(result == NavigationResult_Complete)
+                    robotState = RobotState_DeliveringPayload;
+                else if (result == NavigationResult_Stuck)
+                    robotState = RobotState_Stuck;
                 break;
             case RobotState_DeliveringPayload:
                 delivering_payload(sensorValues);
                 break;
             case RobotState_NavigatingHome:
                 navigating_home(sensorValues);
+                if(result == NavigationResult_Complete)
+                    robotState = RobotState_Idle;
+                else if (result == NavigationResult_Stuck)
+                    robotState = RobotState_Stuck;
                 break;
         }
     }
@@ -141,102 +145,30 @@ int idle()
 
 NavigationResult navigating_to_user(struct AtmegaSensorValues sensorValues)
 {
-    NavigationResult result = NavigationResult_Incomplete;
-    static stoppedCount = 0;
-    
-    MotionState state = interpret_sensors(sensorValues);
-    if(state == MotionState_Stop)
-    {
-        stop();
-        ++stoppedCount;
-        if(stoppedCount == STUCK_DURATION)
-            result = NavigationResult_Stuck;
-    }
-    else
-    {
-        //reset the stop count
-        stoppedCount = 0;
-        // struct DWM1001_Position position = dwm1001_request_position();
-        // //TODO: check user's position periodically
-        // if(!userPosition.set) {
-        //     web_request_get_user_location();
-        //     userPosition = web_response_get_user_location();
-        // }
+    static struct DWM1001_Position userPosition;
+    //TODO: How to set "set" only the first time?
+    userPosition.set = 0;
+    // //TODO: check user's position periodically (every 500ms)
+    // if(!userPosition.set) {
+    //     web_request_get_user_location();
+    //     userPosition = web_response_get_user_location();
+    // }
 
-        // printf("\npositionSet: %i", position.set);
-        // printf("\nuserPositionSet: %i", userPosition.set);
+    // printf("\npositionSet: %i", position.set);
+    // printf("\nuserPositionSet: %i", userPosition.set);
 
-        //  if (position.set && userPosition.set && 
-        //     position.x != userPosition.x && 
-        //     position.y != userPosition.y &&
-        //     position.z != userPosition.z)
-        // {
-            switch(state)
-            {
-                case MotionState_Forward:
-                    go_forward();
-                    break;
-                case MotionState_Reverse:
-                    go_backward();
-                    break;
-                case MotionState_TurnRight:
-                    turn_right();
-                    break;
-                case MotionState_TurnLeft:
-                    turn_left();
-                    break;
-                case MotionState_ToBeDetermined:
-                    //TODO: Decide what this should do
-                    turn_right();
-                    break;
-            }
-        // }
-        // else
-        // {
-        //     result = NavigationResult_Complete;
-        //     stop();
-        // }
-    }   
-    return result;
+    return navigate(sensorValues, userPosition);
 }
 
-void navigating_home(struct AtmegaSensorValues sensorValues)
+NavigationResult navigating_home(struct AtmegaSensorValues sensorValues)
 {
-    MotionState state = interpret_sensors(sensorValues);
-    if(state == MotionState_Stop)
-    {
-        stop();
-    }
-    else
-    {
-        struct DWM1001_Position position = dwm1001_request_position();
+    struct DWM1001_Position homePosition;
+    homePosition.x = 0;
+    homePosition.y = 0;
+    homePosition.z = 0;
+    homePosition.set = 1;
 
-         if (position.set && 
-            position.x != 0 && 
-            position.y != 0 &&
-            position.z != 0)
-        {
-            switch(state)
-            {
-                case MotionState_Forward:
-                    go_forward();
-                    break;
-                case MotionState_Reverse:
-                    go_backward();
-                    break;
-                case MotionState_TurnRight:
-                    turn_right();
-                    break;
-                case MotionState_TurnLeft:
-                    turn_left();
-                    break;
-                case MotionState_ToBeDetermined:
-                    //TODO: Decide what this should do
-                    turn_right();
-                    break;
-            }
-        }
-    }   
+    return navigate(sensorValues, homePosition);
 }
 
 void delivering_payload(struct AtmegaSensorValues sensorValues)
@@ -309,6 +241,77 @@ void delivering_payload(struct AtmegaSensorValues sensorValues)
     // update the load state for later comparison (only if it's not an error)
     if(newLoadState != Weight_LoadError) previousLoadState = newLoadState;
 */
+}
+
+NavigationResult navigate(struct AtmegaSensorValues sensorValues, struct DWM1001_Position destinationPosition)
+{
+    NavigationResult result = NavigationResult_Incomplete;
+    static stoppedCount = 0;
+    
+    MotionState state = interpret_sensors(sensorValues);
+    if(state == MotionState_Stop)
+    {
+        currentRobotMotionState = MotionState_Stop;
+        stop();
+        ++stoppedCount;
+        if(stoppedCount == STUCK_DURATION)
+            result = NavigationResult_Stuck;
+    }
+    else
+    {
+        //reset the stop count
+        stoppedCount = 0;
+        
+        // struct DWM1001_Position robotPosition = dwm1001_request_position();
+        
+        //  if (robotPosition.set && destinationPosition.set && 
+        //     robotPosition.x != destinationPosition.x && 
+        //     robotPosition.y != destinationPosition.y &&
+        //     robotPosition.z != destinationPosition.z)
+        // {
+            switch(state)
+            {
+                case MotionState_Forward:
+                case MotionState_Reverse:
+                case MotionState_TurnRight:
+                case MotionState_TurnLeft:
+                    act_on_motion_state(state);
+                    break;
+                case MotionState_ToBeDetermined:
+                    currentRobotMotionState = MotionState_TurnRight;
+                    //TODO: Decide what this should do
+                    turn_right();
+                    break;
+            }
+        // }
+        // else
+        // {
+        //     result = NavigationResult_Complete;
+        //     stop();
+        // }
+    }   
+    return result;
+}
+
+void act_on_motion_state(MotionState action)
+{
+    currentRobotMotionState = action;
+
+    switch(action)
+    {
+        case MotionState_Forward:
+            go_forward();
+            break;
+        case MotionState_Reverse:
+            go_backward();
+            break;
+        case MotionState_TurnRight:
+            turn_right();
+            break;
+        case MotionState_TurnLeft:
+            turn_left();
+            break;
+    }
 }
 
 MotionState interpret_sensors(struct AtmegaSensorValues sensorValues)
