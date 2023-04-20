@@ -12,6 +12,33 @@
 #include "ir.h"
 #include "web.h"
 
+typedef enum
+{
+    RobotState_Idle,
+    RobotState_NavigatingToUser,
+    RobotState_Stuck,
+    RobotState_DeliveringPayload,
+    RobotState_NavigatingHome
+} RobotState;
+
+typedef enum
+{
+    MotionState_Forward,
+    MotionState_Reverse,
+    MotionState_Stop,
+    MotionState_TurnRight,
+    MotionState_TurnLeft,
+    MotionState_ToBeDetermined
+} MotionState;
+
+typedef enum
+{
+    NavigationResult_Success,
+    NavigationResult_Failure,
+    NavigationResult_Stuck
+} NavigationResult;
+
+
 /************************************************************************/
 /* Global Variables                                                     */
 /************************************************************************/
@@ -24,13 +51,18 @@ volatile MotorDirection currentMotorDirection_L = Motor_Stopped;
 volatile MotorDirection currentMotorDirection_R = Motor_Stopped;
 
 const int SPEED = 40;
-const int TURN_SPEED = 50;
+
+// user's current position, checked every 500ms
+volatile struct DWM1001_Position userPosition;
 
 /************************************************************************/
 /* Local Definitions (private functions)                                */
 /************************************************************************/
 
-void find_user(struct AtmegaSensorValues sensorValues);
+bool navigating_to_user(struct AtmegaSensorValues sensorValues);
+void navigating_home(struct AtmegaSensorValues sensorValues);
+void delivering_payload(struct AtmegaSensorValues sensorValues);
+MotionState interpret_sensors(struct AtmegaSensorValues sensorValues);
 void turn_right();
 void turn_left();
 void go_forward();
@@ -38,13 +70,14 @@ void go_backward();
 void stop();
 
 int main() {
+    RobotState robotState = RobotState_Idle;
     int scheduleId = -1; //may be populated during operation if a schedule is operating
+
+    // Navigating state variables
     struct AtmegaSensorValues sensorValues;
-    // keep track of previous state for the weight sensor so we can detect when it changes
-    Weight_LoadState previousLoadState = Weight_LoadNotPresent;
-    // track the starting weight and number of doses available for use in calculating per-dose weight
-    float startingWeight = 0;
-    int numDoses = 0;
+
+    // Delivery payload state variables
+    //TODO:
     
     stdio_init_all();
 
@@ -59,86 +92,38 @@ int main() {
 
     while (true) 
     {
-        // if we don't have a schedule, check for a schedule
-        if(scheduleId == -1)
+        switch(robotState)
         {
-            web_request_check_schedule();
-            // capture the schedule id once the web request has finished
-            scheduleId = web_response_check_schedule();
-        }
-        // we have a schedule, we need to find the user and check dosage stats
-        else
-        {
-            // get the frame info from the atmega
-            // TODO: We should toggle control of the atmega code detecting the sensors based on if we want data
-            sensorValues = atmega_retrieve_sensor_values();
+            case RobotState_Idle:
+                web_request_check_schedule();
+                // capture the schedule id once the web request has finished
+                scheduleId = web_response_check_schedule();
+                if(scheduleId != -1)
+                    robotState = RobotState_NavigatingToUser;
+                break;
+            case RobotState_NavigatingToUser:
+                // get the frame info from the atmega
+                // TODO: We should toggle control of the atmega code detecting the sensors based on if we want data
+                sensorValues = atmega_retrieve_sensor_values();
 
-            if(numDoses <= 0) 
-            {
-                // capture the new dose amount once the web request has finished
-                numDoses = web_response_retrieve_dose_stats();
+                bool done = navigating_to_user(sensorValues);
+                // if(done)
+                //     robotState = DeliveringPayload;
+                break;
+            case RobotState_DeliveringPayload:
+                // get the frame info from the atmega
+                // TODO: We should toggle control of the atmega code detecting the sensors based on if we want data
+                sensorValues = atmega_retrieve_sensor_values();
 
-                // calculate the new per-dose weight to be used when calculating the weight change
-                if(numDoses > 0 && startingWeight > 0)
-                {
-                    float doseWeight = Weight_DetermineDosage(startingWeight, numDoses);
-                    printf("\ndoseWeight: %f", doseWeight);
-                }
-            }
+                delivering_payload(sensorValues);
+                break;
+            case RobotState_NavigatingHome:
+                // get the frame info from the atmega
+                // TODO: We should toggle control of the atmega code detecting the sensors based on if we want data
+                sensorValues = atmega_retrieve_sensor_values();
 
-            // if we don't have a starting weight, log the current weight as the starting weight
-            // then determine how much a single dose should weigh based on amount of doses remaining
-            if(!startingWeight) 
-            {
-                startingWeight = Weight_CalculateMass(sensorValues.Weight);
-                printf("\nstartingWeight: %f", startingWeight);
-                web_request_retrieve_dose_stats(scheduleId);
-            }
-            
-            // if there were changes in the sensor values, react to them
-            //TODO: This should detect specific changes but right now it's hardcoded and essentially ignored
-            if(sensorValues.Changes) 
-            {        
-                // Check if we currently have something on the weight sensor
-                Weight_LoadState newLoadState = Weight_CheckForLoad(sensorValues.Weight); 
-
-                // if the state changed from something removed, to something added, check to see 
-                // how much the weight changed from the last time there was weight
-                if(newLoadState == Weight_LoadPresent && newLoadState != previousLoadState) 
-                {
-                    // check how big the change was
-                    Weight_Change change = Weight_CheckForChange(sensorValues.Weight);
-
-                    switch(change)
-                    {
-                        // the change increased the weight so the medication was refilled
-                        case Weight_RefillChange:
-                            printf("\nRefill triggered");
-                            // determine the new starting weight
-                            startingWeight = Weight_CalculateMass(sensorValues.Weight);
-                            numDoses = 0;
-                            //TODO: The api requests needs to log a refill somehow
-                            web_request_retrieve_dose_stats(scheduleId);
-                            break;
-                        // the change was too big and may indicate an overdose, but we'll still log a delivery
-                        case Weight_LargeChange:
-                            printf("\nlarge change detected");
-                            // TODO: log an event because this change was a possible concern
-                        // the change was normal, just log a delivery
-                        case Weight_SmallChange:
-                            printf("\nnormal dose detected");
-                            web_request_log_delivery(scheduleId);
-                            break;
-                        // any other change doesn't matter and may have been a hiccup
-                        default:
-                            break;
-                    }
-                }
-                // update the load state for later comparison (only if it's not an error)
-                if(newLoadState != Weight_LoadError) previousLoadState = newLoadState;
-
-                //find_user(sensorValues);
-            }
+                navigating_home(sensorValues);
+                break;
         }
     }
 }
@@ -147,8 +132,175 @@ int main() {
 /* Local  Implementation                                                */
 /************************************************************************/
 
-void find_user(struct AtmegaSensorValues sensorValues)
+bool navigating_to_user(struct AtmegaSensorValues sensorValues)
 {
+    bool done = false;
+    MotionState state = interpret_sensors(sensorValues);
+    if(state == MotionState_Stop)
+    {
+        stop();
+    }
+    else
+    {
+        // struct DWM1001_Position position = dwm1001_request_position();
+        // //TODO: check user's position periodically
+        // if(!userPosition.set) {
+        //     web_request_get_user_location();
+        //     userPosition = web_response_get_user_location();
+        // }
+
+        // printf("\npositionSet: %i", position.set);
+        // printf("\nuserPositionSet: %i", userPosition.set);
+
+        //  if (position.set && userPosition.set && 
+        //     position.x != userPosition.x && 
+        //     position.y != userPosition.y &&
+        //     position.z != userPosition.z)
+        // {
+            switch(state)
+            {
+                case MotionState_Forward:
+                    go_forward();
+                    break;
+                case MotionState_Reverse:
+                    go_backward();
+                    break;
+                case MotionState_TurnRight:
+                    turn_right();
+                    break;
+                case MotionState_TurnLeft:
+                    turn_left();
+                    break;
+                case MotionState_ToBeDetermined:
+                    //TODO: Decide what this should do
+                    turn_right();
+                    break;
+            }
+        // }
+        // else
+        // {
+        //     done = true;
+        //     stop();
+        // }
+    }   
+    return done;
+}
+
+void navigating_home(struct AtmegaSensorValues sensorValues)
+{
+    MotionState state = interpret_sensors(sensorValues);
+    if(state == MotionState_Stop)
+    {
+        stop();
+    }
+    else
+    {
+        struct DWM1001_Position position = dwm1001_request_position();
+
+         if (position.set && 
+            position.x != 0 && 
+            position.y != 0 &&
+            position.z != 0)
+        {
+            switch(state)
+            {
+                case MotionState_Forward:
+                    go_forward();
+                    break;
+                case MotionState_Reverse:
+                    go_backward();
+                    break;
+                case MotionState_TurnRight:
+                    turn_right();
+                    break;
+                case MotionState_TurnLeft:
+                    turn_left();
+                    break;
+                case MotionState_ToBeDetermined:
+                    //TODO: Decide what this should do
+                    turn_right();
+                    break;
+            }
+        }
+    }   
+}
+
+void delivering_payload(struct AtmegaSensorValues sensorValues)
+{
+    // keep track of previous state for the weight sensor so we can detect when it changes
+    Weight_LoadState previousLoadState = Weight_LoadUninitialized;
+    // track the starting weight and number of doses available for use in calculating per-dose weight
+    float startingWeight = -1;
+    // int numDoses = 0;
+    // if(numDoses <= 0) 
+    // {
+    //     // capture the new dose amount once the web request has finished
+    //     numDoses = web_response_retrieve_dose_stats();
+
+    //     // calculate the new per-dose weight to be used when calculating the weight change
+    //     if(numDoses > 0 && startingWeight > 0)
+    //     {
+    //         float doseWeight = Weight_DetermineDosage(startingWeight, numDoses);
+    //         printf("\ndoseWeight: %f", doseWeight);
+    //     }
+    // }
+
+    // if we don't have a starting weight (and we're not unitialized), log the current weight as the starting weight
+    // IGNORE: then determine how much a single dose should weigh based on amount of doses remaining
+    /*if((previousLoadState != Weight_LoadUninitialized && startingWeight == -1) || startingWeight == 0) 
+    {
+        startingWeight = Weight_CalculateMass(sensorValues.Weight);
+        printf("\nstartingWeight: %f", startingWeight);
+        //web_request_retrieve_dose_stats(scheduleId);
+    }
+
+    // Check if we currently have something on the weight sensor
+    Weight_LoadState newLoadState = Weight_CheckForLoad(sensorValues.Weight); 
+
+    // if the state changed from something removed, to something added, 
+    // IGNORE: check to see how much the weight changed from the last time there was weight
+    if (previousLoadState != Weight_LoadUninitialized && startingWeight > 0 && 
+        newLoadState == Weight_LoadPresent && newLoadState != previousLoadState) 
+    {
+        printf("\ndose taken");
+        web_request_log_delivery(scheduleId);
+        // check how big the change was
+        // Weight_Change change = Weight_CheckForChange(sensorValues.Weight);
+
+        // switch(change)
+        // {
+        //     // the change increased the weight so the medication was refilled
+        //     case Weight_RefillChange:
+        //         printf("\nRefill triggered");
+        //         // determine the new starting weight
+        //         startingWeight = Weight_CalculateMass(sensorValues.Weight);
+        //         numDoses = 0;
+        //         //TODO: The api requests needs to log a refill somehow
+        //         web_request_retrieve_dose_stats(scheduleId);
+        //         break;
+        //     // the change was too big and may indicate an overdose, but we'll still log a delivery
+        //     case Weight_LargeChange:
+        //         printf("\nlarge change detected");
+        //         // TODO: log an event because this change was a possible concern
+        //     // the change was normal, just log a delivery
+        //     case Weight_SmallChange:
+        //         printf("\nnormal dose detected");
+        //         web_request_log_delivery(scheduleId);
+        //         break;
+        //     // any other change doesn't matter and may have been a hiccup
+        //     default:
+        //         break;
+        // }
+    }
+    // update the load state for later comparison (only if it's not an error)
+    if(newLoadState != Weight_LoadError) previousLoadState = newLoadState;
+*/
+}
+
+MotionState interpret_sensors(struct AtmegaSensorValues sensorValues)
+{
+    MotionState action = MotionState_ToBeDetermined;
+
     // check if there is an obstacle within 30cm
     bool obstacleLeft = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_L_Duration, 30);
     bool obstacleCentre = Ultrasonic_CheckForObstacle(sensorValues.Ultrasonic_C_Duration, 30);
@@ -159,19 +311,11 @@ void find_user(struct AtmegaSensorValues sensorValues)
     bool dropImminentRight = IR_CheckForDrop(sensorValues.IR_R_Distance, 60);
 
     // Check if any of the backup sensors are being pressed
-    bool obstacleRear = sensorValues.Bump_L || sensorValues.Bump_R;
+    bool obstacleRear = sensorValues.Bump_L || sensorValues.Bump_R;    
 
-    //struct DWM1001_Position position = dwm1001_request_position();
-    // TODO: retrieve the user location into somewhere in order to run comparisons against our position
-    //web_request("/get_user_location");
-    //TODO: We need a function to parse out the user's location into DWM1001_Position
-
-    // drop imminent
     if(dropImminentLeft || dropImminentRight)
     {
-        printf("\ndrop");
-        //just stop if we're about to fall
-        stop();
+        action = MotionState_Stop;
         //TODO: We may want to backup/turn if only one has a drop pending  
         //TODO: If we sit here too long, report a failed delivery         
     }
@@ -181,39 +325,43 @@ void find_user(struct AtmegaSensorValues sensorValues)
         // no obstacles in front, so go forward
         if(!obstacleCentre && !obstacleLeft && !obstacleRight) 
         {
-            printf("\nno obstacle");
-            go_forward(); 
+            printf("\nno obstacles");
+            action = MotionState_Forward; 
         } 
         // obstacle directly in front, and to the left, so turn right
-        else if(obstacleCentre && obstacleLeft)
+        else if(obstacleCentre && obstacleLeft && !obstacleRight)
         {
-            turn_right();
+             printf("\nfront and left obstacles");
+            action = MotionState_TurnRight;
         }
         // obstacle directly in front, and to the right, so turn left
-        else if (obstacleCentre && obstacleRight)
+        else if (obstacleCentre && obstacleRight && !obstacleLeft)
         {
-            turn_left();
+             printf("\nfront and right obstacles");
+            action = MotionState_TurnLeft;
         }
         // just an obstacle in front, so turn towards the destination
         else if (obstacleCentre && !obstacleRight && !obstacleLeft)
         {
-            //TODO: pick a direction that takes us closer to the destination
-            turn_right();
+            printf("\nfront obstacle");
+            action = MotionState_ToBeDetermined;
         }
         // obstacles all in front, but no rear, so backup
         else if (obstacleCentre && obstacleRight && obstacleLeft && !obstacleRear)
         {
-            go_backward();
+            printf("\nfront/left/right obstacles only");
+            action = MotionState_Reverse;
         }
         // obstacles everywhere, just stop
         else
         {
-            stop();
+            printf("\nall the obstacles");
+            action = MotionState_Stop;
             //TODO: If we sit here too long, report a failed delivery
         }
-    } 
+    }    
+    return action;
 }
-
 
 void turn_right()
 {

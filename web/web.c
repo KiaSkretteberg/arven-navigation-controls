@@ -9,6 +9,7 @@
 #include "pico/cyw43_arch.h"
 #include "lwip/apps/http_client.h"
 #include "web.h"
+#include "../dwm1001/dwm1001.h"
 
 
 /************************************************************************/
@@ -25,6 +26,7 @@ const uint32_t AUTH = CYW43_AUTH_WPA2_MIXED_PSK;
 const char DEVICE_SERIAL[] = "RX-AR2023-0001";
 
 const char PROPERTY_DELIM = ';';
+const char PROPERTY_DELIM_STR[] = ";";
 const char VALUE_DELIM = ':';
 
 /************************************************************************/
@@ -127,6 +129,11 @@ int web_init(const char *ssid, const char *pass, const char *hostname,
     requests[Web_RequestType_RetrieveDoseStats].active = 0;
     strcpy(requests[Web_RequestType_RetrieveDoseStats].body, "");
     strcpy(requests[Web_RequestType_RetrieveDoseStats].headers, "");
+    // setup the get user location request
+    requests[Web_RequestType_RetrieveDoseStats].type = Web_RequestType_GetUserLocation;
+    requests[Web_RequestType_RetrieveDoseStats].active = 0;
+    strcpy(requests[Web_RequestType_RetrieveDoseStats].body, "");
+    strcpy(requests[Web_RequestType_RetrieveDoseStats].headers, "");
     return status;
 }
 
@@ -164,7 +171,7 @@ void web_request_check_schedule(void)
 void web_request_retrieve_dose_stats(int schedule_id)
 {
     // build up the url for the request
-    char url[2048] = "/retrieve_dose_stats/";
+    char url[2048] = "/retrieve_dose_stats/schedule_id/";
     sprintf(url, "%s%i", url, schedule_id);
     // request the new dose amount
     web_request(url, Web_RequestType_RetrieveDoseStats);
@@ -181,6 +188,17 @@ void web_request_log_delivery(int schedule_id)
     web_request(url, Web_RequestType_LogDelivery);
 }
 
+void web_request_get_user_location(void)//int user_id)
+{
+    // build the url for logging delivery
+    char url[2048] = "/get_user_location/device/";
+    strcat(url, DEVICE_SERIAL);
+    // strcat(url, "/user_id/");
+    // sprintf(url, "%s%i", url, user_id);
+    // make the request to the specified url
+    web_request(url, Web_RequestType_GetUserLocation);
+}
+
 int web_response_check_schedule(void)
 {
     Web_RequestType type = Web_RequestType_CheckSchedule;
@@ -194,7 +212,7 @@ int web_response_check_schedule(void)
 
         // split out the userid and scheduleid property/value pairs
         strcpy(scheduleId, strchr(requests[type].body, PROPERTY_DELIM));
-        strcpy(userId, strtok(requests[type].body, ";"));
+        strcpy(userId, strtok(requests[type].body, PROPERTY_DELIM_STR));
         
         // grab out the user id value from the property/value pair
         chunk = strchr(userId, VALUE_DELIM);
@@ -226,6 +244,56 @@ int web_response_retrieve_dose_stats(void)
         return atoi(requests[type].body);
     }
     return -1;
+}
+
+struct DWM1001_Position web_response_get_user_location(void)
+{
+    struct DWM1001_Position position;
+    position.x = 0;
+    position.y = 0;
+    position.z = 0;
+    position.set = 0;
+
+    Web_RequestType type = Web_RequestType_GetUserLocation;
+    if(requests[type].active && requests[type].complete) 
+    {
+        char xCoord[10] = "";       // "x:#######"
+        char yCoord[10] = "";       // "y:#######"
+        char zCoord[10] = "";       // "y:#######"
+        char * chunk;
+
+        // split out the x/y/z key-value pairs
+        strcpy(xCoord, strtok(requests[type].body, PROPERTY_DELIM_STR));
+        strcpy(yCoord, strtok(NULL, PROPERTY_DELIM_STR));
+        strcpy(zCoord, strtok(NULL, PROPERTY_DELIM_STR));
+        printf(xCoord);
+        printf(yCoord);
+        printf(zCoord);
+        
+        // grab out the x value from the property/value pair
+        chunk = strchr(xCoord, VALUE_DELIM);
+        ++chunk;
+        position.x = atof(chunk);
+
+        // grab out the y value from the property/value pair
+        chunk = strchr(yCoord, VALUE_DELIM);
+        ++chunk;
+        position.y = atof(chunk);
+
+        // grab out the z value from the property/value pair
+        chunk = strchr(zCoord, VALUE_DELIM);
+        ++chunk;
+        position.z = atof(chunk);
+
+        // reset the request so a new one can be made
+        requests[type].active = 0;
+        strcpy(requests[type].headers, "");
+        strcpy(requests[type].body, "");
+        requests[type].complete = 0;
+        position.set = 1;
+    }
+
+    return position;
 }
 
 /************************************************************************/

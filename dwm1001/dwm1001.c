@@ -52,6 +52,11 @@ struct DWM1001_Position dwm1001_request_position(void)
     uint8_t buff[20];
     uint8_t error;
     struct DWM1001_Position coords;
+    coords.x = 0;
+    coords.y = 0;
+    coords.z = 0;
+    coords.set = 0;
+
     // dwm_loc_get      see 5.3.10
     uart_putc_raw(DWM1001_UART_ID, 0x0C);
     uart_putc_raw(DWM1001_UART_ID, 0x00);
@@ -60,14 +65,19 @@ struct DWM1001_Position dwm1001_request_position(void)
     error = read_value(0x40, buff);
     // get the device's position
     error = read_value(0x41, buff);
-    // first 4 bytes are x, next 4 are y, next 4 are z, last 1 is quality(?)
-    // bytes represent 32 bit integer (measuring mm)
-    // example: 0x08 0x00 0x00 0x00    0x0B 0xFF 0xFF 0xFF    0x4C 0x00 0x00 0x00    0x00
-    // bytes come in reverse order (LSByte first)
-    // ~ x = -0.06, y = -0.03, z = 0.08
-    coords.x = read_coord(buff, 0);
-    coords.y = read_coord(buff, 4);
-    coords.z = read_coord(buff, 8);
+    if(!error)
+    {
+        coords.set = 1;
+        // first 4 bytes are x, next 4 are y, next 4 are z, last 1 is quality(?)
+        // bytes represent 32 bit integer (measuring mm)
+        // example: 0x08 0x00 0x00 0x00    0x0B 0xFF 0xFF 0xFF    0x4C 0x00 0x00 0x00    0x00
+        // bytes come in reverse order (LSByte first)
+        // ~ x = -0.06, y = -0.03, z = 0.08
+        coords.x = read_coord(buff, 0);
+        coords.y = read_coord(buff, 4);
+        coords.z = read_coord(buff, 8);
+    }
+    
     // get the position to the anchors (not needed if home is 0,0,0 but may be beneficial)
     error = read_value(0x49, buff);
     return coords;

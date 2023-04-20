@@ -9,6 +9,7 @@
  * Author: Kia Skretteberg
  */
 #include "lwip/apps/http_client.h"
+#include "../dwm1001/dwm1001.h"
 
 #define WEB_CLIENT_SERVER       "api.rx-arven.com"
 #define WEB_CLIENT_REQUEST_URL  "/api" 
@@ -18,7 +19,8 @@ typedef enum
 {
 	Web_RequestType_CheckSchedule = 0,
 	Web_RequestType_LogDelivery = 1,
-    Web_RequestType_RetrieveDoseStats = 2
+    Web_RequestType_RetrieveDoseStats = 2,
+    Web_RequestType_GetUserLocation = 3
 } Web_RequestType;
 
 struct Web_Request {
@@ -35,9 +37,11 @@ int web_init(const char *ssid, const char *pass, const char *hostname,
 
 void web_request(char * uriParams, Web_RequestType type);
 
-int web_response_check_schedule(void);
-int web_response_retrieve_dose_stats(void);
-
 void web_request_check_schedule(void);
 void web_request_retrieve_dose_stats(int schedule_id);
 void web_request_log_delivery(int schedule_id);
+void web_request_get_user_location(void);// Ideally this would pass a user_id but we're skipping that for now //int user_id);
+
+int web_response_check_schedule(void);
+int web_response_retrieve_dose_stats(void);
+struct DWM1001_Position web_response_get_user_location(void);

@@ -25,7 +25,8 @@ typedef enum
 {
 	Weight_LoadPresent,
 	Weight_LoadNotPresent,
-	Weight_LoadError
+	Weight_LoadError,
+	Weight_LoadUninitialized
 } Weight_LoadState;
 
 // Determine the weight (in grams) that the atodval represents

@@ -7,6 +7,9 @@
  * Author: Kia Skretteberg
  */
 
+#ifndef DWM1001H
+#define DWM1001H
+
 // We are using pins 0 and 1, but see the GPIO function select table in the
 // datasheet for information on which other pins can be used.
 #define DWM1001_TX_PIN 4 // GPIO pin 4 [pin 6]
@@ -22,6 +25,7 @@ struct DWM1001_Position {
     long x; //mm
     long y; //mm
     long z; //mm
+    bool set;
 };
 
 // Initialize the UART Channel 1 with a baud rate of 115200 for communication with the DWM1001 dev board
@@ -30,3 +34,5 @@ void dwm1001_init_communication(void);
 // Send a request to the DWM1001 module for dwm_loc_get
 // Return the x/y/z coordinates returned as long values (in mm) on position struct
 struct DWM1001_Position dwm1001_request_position(void);
+
+#endif
