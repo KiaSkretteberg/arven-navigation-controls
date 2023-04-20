@@ -38,6 +38,13 @@ typedef enum
     NavigationResult_Stuck
 } NavigationResult;
 
+typedef enum
+{
+    DeliveryState_WaitingRemoval,
+    DeliveryState_Removed,
+    DeliveryState_Complete
+} DeliveryState;
+
 
 /************************************************************************/
 /* Global Variables                                                     */
@@ -53,6 +60,9 @@ const int SPEED = 40;
 // How long the robot can be "stopped" before it's considered stuck
 const int STUCK_DURATION = 60000; //1 minute (60s ==> 60,000ms) TODO: This isn't actually true
 
+// How long the weight sensor must be in the same state before it will transition between states
+const int WEIGHT_DURATION = 500;
+
 // monitor current state of motor so instructions are only sent for changes
 volatile MotionState currentRobotMotionState = MotionState_ToBeDetermined;
 
@@ -62,7 +72,7 @@ volatile MotionState currentRobotMotionState = MotionState_ToBeDetermined;
 
 NavigationResult navigating_to_user(struct AtmegaSensorValues sensorValues);
 NavigationResult navigating_home(struct AtmegaSensorValues sensorValues);
-void delivering_payload(struct AtmegaSensorValues sensorValues);
+bool delivering_payload(struct AtmegaSensorValues sensorValues, int scheduleId);
 MotionState interpret_sensors(struct AtmegaSensorValues sensorValues);
 NavigationResult navigate(struct AtmegaSensorValues sensorValues, struct DWM1001_Position destination);
 void act_on_motion_state(MotionState action);
@@ -78,9 +88,6 @@ int main() {
 
     // Navigating state variables
     struct AtmegaSensorValues sensorValues;
-
-    // Delivery payload state variables
-    //TODO:
     
     stdio_init_all();
 
@@ -119,10 +126,11 @@ int main() {
                     robotState = RobotState_Stuck;
                 break;
             case RobotState_DeliveringPayload:
-                delivering_payload(sensorValues);
+                if(delivering_payload(sensorValues, scheduleId))
+                    robotState = RobotState_NavigatingHome;
                 break;
             case RobotState_NavigatingHome:
-                navigating_home(sensorValues);
+                NavigationResult result = navigating_home(sensorValues);
                 if(result == NavigationResult_Complete)
                     robotState = RobotState_Idle;
                 else if (result == NavigationResult_Stuck)
@@ -171,76 +179,64 @@ NavigationResult navigating_home(struct AtmegaSensorValues sensorValues)
     return navigate(sensorValues, homePosition);
 }
 
-void delivering_payload(struct AtmegaSensorValues sensorValues)
+bool delivering_payload(struct AtmegaSensorValues sensorValues, int scheduleId)
 {
-    // keep track of previous state for the weight sensor so we can detect when it changes
-    Weight_LoadState previousLoadState = Weight_LoadUninitialized;
-    // track the starting weight and number of doses available for use in calculating per-dose weight
-    float startingWeight = -1;
-    // int numDoses = 0;
-    // if(numDoses <= 0) 
-    // {
-    //     // capture the new dose amount once the web request has finished
-    //     numDoses = web_response_retrieve_dose_stats();
-
-    //     // calculate the new per-dose weight to be used when calculating the weight change
-    //     if(numDoses > 0 && startingWeight > 0)
-    //     {
-    //         float doseWeight = Weight_DetermineDosage(startingWeight, numDoses);
-    //         printf("\ndoseWeight: %f", doseWeight);
-    //     }
-    // }
-
-    // if we don't have a starting weight (and we're not unitialized), log the current weight as the starting weight
-    // IGNORE: then determine how much a single dose should weigh based on amount of doses remaining
-    /*if((previousLoadState != Weight_LoadUninitialized && startingWeight == -1) || startingWeight == 0) 
-    {
-        startingWeight = Weight_CalculateMass(sensorValues.Weight);
-        printf("\nstartingWeight: %f", startingWeight);
-        //web_request_retrieve_dose_stats(scheduleId);
-    }
-
+    static DeliveryState state = DeliveryState_WaitingRemoval;
+    static int loadStateCount = 0;
+    bool complete = 0;
     // Check if we currently have something on the weight sensor
-    Weight_LoadState newLoadState = Weight_CheckForLoad(sensorValues.Weight); 
+    Weight_LoadState loadState = Weight_CheckForLoad(sensorValues.Weight); 
 
-    // if the state changed from something removed, to something added, 
-    // IGNORE: check to see how much the weight changed from the last time there was weight
-    if (previousLoadState != Weight_LoadUninitialized && startingWeight > 0 && 
-        newLoadState == Weight_LoadPresent && newLoadState != previousLoadState) 
+    switch(state)
     {
-        printf("\ndose taken");
-        web_request_log_delivery(scheduleId);
-        // check how big the change was
-        // Weight_Change change = Weight_CheckForChange(sensorValues.Weight);
-
-        // switch(change)
-        // {
-        //     // the change increased the weight so the medication was refilled
-        //     case Weight_RefillChange:
-        //         printf("\nRefill triggered");
-        //         // determine the new starting weight
-        //         startingWeight = Weight_CalculateMass(sensorValues.Weight);
-        //         numDoses = 0;
-        //         //TODO: The api requests needs to log a refill somehow
-        //         web_request_retrieve_dose_stats(scheduleId);
-        //         break;
-        //     // the change was too big and may indicate an overdose, but we'll still log a delivery
-        //     case Weight_LargeChange:
-        //         printf("\nlarge change detected");
-        //         // TODO: log an event because this change was a possible concern
-        //     // the change was normal, just log a delivery
-        //     case Weight_SmallChange:
-        //         printf("\nnormal dose detected");
-        //         web_request_log_delivery(scheduleId);
-        //         break;
-        //     // any other change doesn't matter and may have been a hiccup
-        //     default:
-        //         break;
-        // }
+        case DeliveryState_WaitingRemoval:
+            if(loadState == Weight_LoadNotPresent)
+            {
+                ++loadStateCount;
+                if(loadStateCount >= WEIGHT_DURATION)
+                {
+                    state = DeliveryState_Removed;
+                }
+            }
+            else
+            {
+                loadStateCount = 0;
+            }
+            break;
+        case DeliveryState_Removed:
+            if(loadState == Weight_LoadPresent)
+            {
+                ++loadStateCount;
+                if(loadStateCount >= WEIGHT_DURATION)
+                {
+                    state = DeliveryState_Complete;
+                }
+            }
+            else
+            {
+                loadStateCount = 0;
+            }
+            break;
+        case DeliveryState_Complete:
+            if(loadState == Weight_LoadPresent)
+            {
+                ++loadStateCount;
+                if(loadStateCount >= WEIGHT_DURATION)
+                {
+                    printf("\ndose taken");
+                    state = DeliveryState_WaitingRemoval;
+                    web_request_log_delivery(scheduleId);
+                    complete = 1;
+                }
+            }
+            else
+            {
+                loadStateCount = 0;
+            }
+            break;
     }
-    // update the load state for later comparison (only if it's not an error)
-    if(newLoadState != Weight_LoadError) previousLoadState = newLoadState;
-*/
+
+    return complete;
 }
 
 NavigationResult navigate(struct AtmegaSensorValues sensorValues, struct DWM1001_Position destinationPosition)
