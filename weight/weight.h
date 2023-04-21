@@ -10,7 +10,7 @@
 #define AREF 5.0
 #define MAX_ATODVAL 1024.0
 #define Weight_MAXN 10 // retrieved from https://www.uneotech.com/uploads/product_download/tw/Weight-10N%20ENG.pdf
-#define Weight_MINV 0.00 // Experimentally determined (voltage measured when no load) TODO: determine this value for real
+#define Weight_MINV 0.01 // Experimentally determined (voltage measured when no load) TODO: determine this value for real
 
 
 typedef enum

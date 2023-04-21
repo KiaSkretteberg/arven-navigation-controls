@@ -65,7 +65,8 @@ const int STUCK_DURATION = 60000; //1 minute (60s ==> 60,000ms)
 const int WEIGHT_DURATION = 5000; // 5 seconds
 
 // monitor current state of motor so instructions are only sent for changes
-volatile MotionState currentRobotMotionState = MotionState_ToBeDetermined;
+volatile MotionState currentRightMotorState = MotionState_ToBeDetermined;
+volatile MotionState currentLeftMotorState = MotionState_ToBeDetermined;
 
 /************************************************************************/
 /* Local Definitions (private functions)                                */
@@ -260,7 +261,6 @@ NavigationResult navigate(struct AtmegaSensorValues sensorValues, struct DWM1001
         if(stoppedSnapshot == 0)
             stoppedSnapshot = time_us_64();
 
-        currentRobotMotionState = MotionState_Stop;
         stop();
         // if the amountof time passed since we first snapped the stopped state has reached our cutoff duration, we're stuck!
         if(has_duration_passed(stoppedSnapshot, STUCK_DURATION))
@@ -292,7 +292,6 @@ NavigationResult navigate(struct AtmegaSensorValues sensorValues, struct DWM1001
                     act_on_motion_state(state);
                     break;
                 case MotionState_ToBeDetermined:
-                    currentRobotMotionState = MotionState_TurnRight;
                     //TODO: Decide what this should do
                     if(xDiff < 0){
                         turn_right();
@@ -313,8 +312,6 @@ NavigationResult navigate(struct AtmegaSensorValues sensorValues, struct DWM1001
 
 void act_on_motion_state(MotionState action)
 {
-    currentRobotMotionState = action;
-
     switch(action)
     {
         case MotionState_Forward:
@@ -400,56 +397,81 @@ MotionState interpret_sensors(struct AtmegaSensorValues sensorValues)
 
 void turn_right()
 {
-    if(currentRobotMotionState != MotionState_TurnRight)
+    if(currentRightMotorState != MotionState_TurnRight)
     {
         printf("\ngo backward right");
         motor_reverse(Motor_FR, SPEED);
+        currentRightMotorState = MotionState_TurnRight;
+    }
+    if(currentLeftMotorState != MotionState_TurnRight)
+    {
         printf("\ngo forward left");
         motor_forward(Motor_FL, SPEED); 
+        currentLeftMotorState = MotionState_TurnRight;
     }
 }
 
 void turn_left()
 {
-    if(currentRobotMotionState != MotionState_TurnLeft)
+    if(currentRightMotorState != MotionState_TurnLeft)
     {
         printf("\ngo forward right");
         motor_forward(Motor_FR, SPEED);
+        currentRightMotorState = MotionState_TurnLeft;
+    }
+    if(currentLeftMotorState != MotionState_TurnLeft)
+    {
         printf("\ngo backward left");
         motor_reverse(Motor_FL, SPEED); 
+        currentLeftMotorState = MotionState_TurnLeft;
     }
 }
 
 void go_forward()
 {
-    if(currentRobotMotionState != MotionState_Forward)
+    if(currentRightMotorState != MotionState_Forward)
     {
         printf("\ngo forward right");
         motor_forward(Motor_FR, SPEED);
+        currentRightMotorState = MotionState_Forward;
+    }
+    if(currentLeftMotorState != MotionState_Forward)
+    {
         printf("\ngo forward left");
         motor_forward(Motor_FL, SPEED); 
+        currentRightMotorState = MotionState_Forward;
     }
 }
 
 void go_backward()
 {
-    if(currentRobotMotionState != MotionState_Reverse)
+    if(currentRightMotorState != MotionState_Reverse)
     {
         printf("\ngo backward right");
         motor_reverse(Motor_FR, SPEED);
+        currentRightMotorState = MotionState_Reverse;
+    }
+    if(currentLeftMotorState != MotionState_Reverse)
+    {
         printf("\ngo backward left");
         motor_reverse(Motor_FL, SPEED); 
+        currentRightMotorState = MotionState_Reverse;
     }
 }
 
 void stop()
 {
-    if(currentRobotMotionState != MotionState_Stop)
+    if(currentRightMotorState != MotionState_Stop)
     {
         printf("\nstop right");
         motor_stop(Motor_FR);
+        currentRightMotorState = MotionState_Stop;
+    }
+    if(currentLeftMotorState != MotionState_Stop)
+    {
         printf("\nstop left");
         motor_stop(Motor_FL); 
+        currentRightMotorState = MotionState_Stop;
     }
 }
 
