@@ -4,6 +4,7 @@
 #include "pico/binary_info.h"
 #include "hardware/gpio.h"
 #include "hardware/pwm.h"
+#include "hardware/timer.h"
 #include "motors.h"
 #include "dwm1001.h"
 #include "atmega.h"
@@ -58,10 +59,10 @@ const char WIFI_PASSWORD[] = "12345678";
 const int SPEED = 40;
 
 // How long the robot can be "stopped" before it's considered stuck
-const int STUCK_DURATION = 60000; //1 minute (60s ==> 60,000ms) TODO: This isn't actually true
+const int STUCK_DURATION = 60000; //1 minute (60s ==> 60,000ms)
 
 // How long the weight sensor must be in the same state before it will transition between states
-const int WEIGHT_DURATION = 500;
+const int WEIGHT_DURATION = 5000; // 5 seconds
 
 // monitor current state of motor so instructions are only sent for changes
 volatile MotionState currentRobotMotionState = MotionState_ToBeDetermined;
@@ -70,9 +71,10 @@ volatile MotionState currentRobotMotionState = MotionState_ToBeDetermined;
 /* Local Definitions (private functions)                                */
 /************************************************************************/
 
+int idle(void);
 NavigationResult navigating_to_user(struct AtmegaSensorValues sensorValues);
-NavigationResult navigating_home(struct AtmegaSensorValues sensorValues);
 bool delivering_payload(struct AtmegaSensorValues sensorValues, int scheduleId);
+NavigationResult navigating_home(struct AtmegaSensorValues sensorValues);
 MotionState interpret_sensors(struct AtmegaSensorValues sensorValues);
 NavigationResult navigate(struct AtmegaSensorValues sensorValues, struct DWM1001_Position destination);
 void act_on_motion_state(MotionState action);
@@ -81,6 +83,7 @@ void turn_left();
 void go_forward();
 void go_backward();
 void stop();
+bool has_duration_passed(uint64_t snapshot, uint64_t duration);
 
 int main() {
     RobotState robotState = RobotState_Idle;
@@ -111,6 +114,8 @@ int main() {
             sensorValues = atmega_retrieve_sensor_values();
         }
 
+        NavigationResult result;
+
         switch(robotState)
         {
             case RobotState_Idle:
@@ -119,7 +124,7 @@ int main() {
                     robotState = RobotState_NavigatingToUser;
                 break;
             case RobotState_NavigatingToUser:
-                NavigationResult result = navigating_to_user(sensorValues);
+                result = navigating_to_user(sensorValues);
                 if(result == NavigationResult_Complete)
                     robotState = RobotState_DeliveringPayload;
                 else if (result == NavigationResult_Stuck)
@@ -130,7 +135,7 @@ int main() {
                     robotState = RobotState_NavigatingHome;
                 break;
             case RobotState_NavigatingHome:
-                NavigationResult result = navigating_home(sensorValues);
+                result = navigating_home(sensorValues);
                 if(result == NavigationResult_Complete)
                     robotState = RobotState_Idle;
                 else if (result == NavigationResult_Stuck)
@@ -144,7 +149,7 @@ int main() {
 /* Local  Implementation                                                */
 /************************************************************************/
 
-int idle()
+int idle(void)
 {
     web_request_check_schedule();
     // capture the schedule id once the web request has finished
@@ -182,46 +187,49 @@ NavigationResult navigating_home(struct AtmegaSensorValues sensorValues)
 bool delivering_payload(struct AtmegaSensorValues sensorValues, int scheduleId)
 {
     static DeliveryState state = DeliveryState_WaitingRemoval;
-    static int loadStateCount = 0;
+    static uint64_t loadStateSnapshot = 0;
     bool complete = 0;
     // Check if we currently have something on the weight sensor
     Weight_LoadState loadState = Weight_CheckForLoad(sensorValues.Weight); 
+
+    // take asnapshot of the current time if the snapshot is 0
+    if(loadStateSnapshot == 0)
+        loadStateSnapshot = time_us_64();
 
     switch(state)
     {
         case DeliveryState_WaitingRemoval:
             if(loadState == Weight_LoadNotPresent)
             {
-                ++loadStateCount;
-                if(loadStateCount >= WEIGHT_DURATION)
+                if(has_duration_passed(loadStateSnapshot, WEIGHT_DURATION))
                 {
                     state = DeliveryState_Removed;
                 }
             }
             else
             {
-                loadStateCount = 0;
+                // reset the snapshot to re-check later
+                loadStateSnapshot = 0;
             }
             break;
         case DeliveryState_Removed:
             if(loadState == Weight_LoadPresent)
             {
-                ++loadStateCount;
-                if(loadStateCount >= WEIGHT_DURATION)
+                if(has_duration_passed(loadStateSnapshot, WEIGHT_DURATION))
                 {
                     state = DeliveryState_Complete;
                 }
             }
             else
             {
-                loadStateCount = 0;
+                // reset the snapshot to re-check later
+                loadStateSnapshot = 0;
             }
             break;
         case DeliveryState_Complete:
             if(loadState == Weight_LoadPresent)
             {
-                ++loadStateCount;
-                if(loadStateCount >= WEIGHT_DURATION)
+                if(has_duration_passed(loadStateSnapshot, WEIGHT_DURATION))
                 {
                     printf("\ndose taken");
                     state = DeliveryState_WaitingRemoval;
@@ -231,7 +239,8 @@ bool delivering_payload(struct AtmegaSensorValues sensorValues, int scheduleId)
             }
             else
             {
-                loadStateCount = 0;
+                // reset the snapshot to re-check later
+                loadStateSnapshot = 0;
             }
             break;
     }
@@ -242,23 +251,29 @@ bool delivering_payload(struct AtmegaSensorValues sensorValues, int scheduleId)
 NavigationResult navigate(struct AtmegaSensorValues sensorValues, struct DWM1001_Position destinationPosition)
 {
     NavigationResult result = NavigationResult_Incomplete;
-    static stoppedCount = 0;
-
+    static uint64_t stoppedSnapshot = 0;
+    
     MotionState state = interpret_sensors(sensorValues);
     if(state == MotionState_Stop)
     {
+        // if this is the first time we stopped, capture the current time for comparison later
+        if(stoppedSnapshot == 0)
+            stoppedSnapshot = time_us_64();
+
         currentRobotMotionState = MotionState_Stop;
         stop();
-        ++stoppedCount;
-        if(stoppedCount == STUCK_DURATION)
+        // if the amountof time passed since we first snapped the stopped state has reached our cutoff duration, we're stuck!
+        if(has_duration_passed(stoppedSnapshot, STUCK_DURATION))
             result = NavigationResult_Stuck;
     }
     else
     {
-        //reset the stop count
-        stoppedCount = 0;
+        //reset the stopped snapshot so it can be reinitialized later
+        stoppedSnapshot = 0;
         
-        // struct DWM1001_Position robotPosition = dwm1001_request_position();
+        struct DWM1001_Position robotPosition = dwm1001_request_position();
+        printf("\nx:%f y:%f z:%f", robotPosition.x, robotPosition.y, robotPosition.z);
+        
         long xDiff = robotPosition.x - destinationPosition.x;
         long yDiff = robotPosition.y - destinationPosition.y;
         //long zDiff = robotPosition.z - destinationPosition.z;
@@ -357,7 +372,7 @@ MotionState interpret_sensors(struct AtmegaSensorValues sensorValues)
         // obstacle directly in front, and to the right, so turn left
         else if (obstacleCentre && obstacleRight && !obstacleLeft)
         {
-             printf("\nfront and right obstacles");
+            printf("\nfront and right obstacles");
             action = MotionState_TurnLeft;
         }
         // just an obstacle in front, so turn towards the destination
@@ -436,4 +451,10 @@ void stop()
         printf("\nstop left");
         motor_stop(Motor_FL); 
     }
+}
+
+bool has_duration_passed(uint64_t snapshot, uint64_t duration)
+{
+    uint64_t difference = (time_us_64() - snapshot) / 1000; // divided by 1000 to convert to ms
+    return difference >= duration;
 }

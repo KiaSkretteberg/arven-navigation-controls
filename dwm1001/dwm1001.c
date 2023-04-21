@@ -21,7 +21,7 @@
 int read_value(uint8_t expect_type, uint8_t * buff);
 
 // Parse out a coordinate (x, y, z) as a 32 bit integer, starting from the startIdx of the buff, made up of individual 4 bytes
-long read_coord(uint8_t * buff, char startIdx);
+long read_coord(uint8_t * buff, uint8_t startIdx);
 
 
 /************************************************************************/
@@ -65,8 +65,10 @@ struct DWM1001_Position dwm1001_request_position(void)
     error = read_value(0x40, buff);
     // get the device's position
     error = read_value(0x41, buff);
+    printf("\nerror: %i", error);
     if(!error)
     {
+        printf("\nbuff: %x", buff);
         coords.set = 1;
         // first 4 bytes are x, next 4 are y, next 4 are z, last 1 is quality(?)
         // bytes represent 32 bit integer (measuring mm)
@@ -92,11 +94,13 @@ int read_value(uint8_t expect_type, uint8_t * buff)
     unsigned char count = 0;
     // max number of bytes to be read, at most is 253
     unsigned char maxLength = 253;
+    printf("\nread value:");
     
     // while there's data to read and we haven't read the end of this value (read all bytes indicated in value)
     while(uart_is_readable(DWM1001_UART_ID) && count < maxLength + 2)
     {
-        uint8_t c = uart_getc(DWM1001_UART_ID);
+        char c = uart_getc(DWM1001_UART_ID);
+        printf("\nc:%x", c);
         ++count;
         if(count == 1)
         {
@@ -119,11 +123,13 @@ int read_value(uint8_t expect_type, uint8_t * buff)
     return 0;
 }
 
-long read_coord(uint8_t * buff, char startIdx)
+long read_coord(uint8_t * buff, uint8_t startIdx)
 {
+    printf("\n");
     long value = buff[startIdx];
     value += buff[startIdx+1]<<8;
     value += buff[startIdx+2]<<16;
     value += buff[startIdx+3]<<24;
+    printf("%i", value);
     return value;
 }
