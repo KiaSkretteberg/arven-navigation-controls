@@ -243,7 +243,7 @@ NavigationResult navigate(struct AtmegaSensorValues sensorValues, struct DWM1001
 {
     NavigationResult result = NavigationResult_Incomplete;
     static stoppedCount = 0;
-    
+
     MotionState state = interpret_sensors(sensorValues);
     if(state == MotionState_Stop)
     {
@@ -259,14 +259,14 @@ NavigationResult navigate(struct AtmegaSensorValues sensorValues, struct DWM1001
         stoppedCount = 0;
         
         // struct DWM1001_Position robotPosition = dwm1001_request_position();
-        
+        long xDiff = robotPosition.x - destinationPosition.x;
+        long yDiff = robotPosition.y - destinationPosition.y;
+        long zDiff = robotPosition.z - destinationPosition.z;
         //basically we would want to find the difference between the two points, so
         //we would take the absolute value of the difference between the two since we
         //don't care about magnitude when it comes to how close they are to each other
         //  if (robotPosition.set && destinationPosition.set && 
-        //     abs(robotPosition.x - destinationPosition.x) <= 20 && 
-        //     abs(robotPosition.y - destinationPosition.y <= 20) &&
-        //     abs(robotPosition.z - destinationPosition.z) <= 20)
+        //     abs(xDiff) <= 20 && abs(yDiff) <= 20 && abs(zDiff) <= 20)
         // {
             switch(state)
             {
@@ -279,7 +279,11 @@ NavigationResult navigate(struct AtmegaSensorValues sensorValues, struct DWM1001
                 case MotionState_ToBeDetermined:
                     currentRobotMotionState = MotionState_TurnRight;
                     //TODO: Decide what this should do
-                    turn_right();
+                    if(xDiff < 0){
+                        turn_right();
+                    } else{
+                        turn_left();
+                    }                   
                     break;
             }
         // }
