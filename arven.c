@@ -65,7 +65,7 @@ const int STUCK_DURATION = 60000; //1 minute (60s ==> 60,000ms)
 const int WEIGHT_DURATION = 5000; // 5 seconds
 
 const long USER_REQUEST_DURATION = 500000; // 500ms (in us)
-const long ROBOT_REQUEST_DURATION = 1000; // 1ms (in us)
+const long ROBOT_REQUEST_DURATION = 20000; // 20ms (in us)
 
 // monitor current state of motor so instructions are only sent for changes
 volatile MotionState currentRightMotorState = MotionState_ToBeDetermined;
@@ -410,37 +410,37 @@ MotionState interpret_sensors(struct AtmegaSensorValues sensorValues)
         // no obstacles in front, so go forward
         if(!obstacleCentre && !obstacleLeft && !obstacleRight) 
         {
-            printf("\nno obstacles");
+            // printf("\nno obstacles");
             action = MotionState_Forward; 
         } 
         // obstacle to the left, so turn right (regardless of front)
         else if(obstacleLeft && !obstacleRight)
         {
-             printf("\nleft obstacle");
+            //  printf("\nleft obstacle");
             action = MotionState_TurnRight;
         }
         // obstacle to the right, so turn left (regardless of front)
         else if (obstacleRight && !obstacleLeft)
         {
-            printf("\nright obstacle");
+            // printf("\nright obstacle");
             action = MotionState_TurnLeft;
         }
         // just an obstacle in front, so turn towards the destination
         else if (obstacleCentre && !obstacleRight && !obstacleLeft)
         {
-            printf("\nfront obstacle");
+            // printf("\nfront obstacle");
             action = MotionState_ToBeDetermined;
         }
         // obstacles all in front, but no rear, so backup
         else if (obstacleCentre && obstacleRight && obstacleLeft && !obstacleRear)
         {
-            printf("\nfront/left/right obstacles only");
+            // printf("\nfront/left/right obstacles only");
             action = MotionState_Reverse;
         }
         // obstacles everywhere, just stop
         else
         {
-            printf("\nall the obstacles");
+            // printf("\nall the obstacles");
             action = MotionState_Stop;
             //TODO: If we sit here too long, report a failed delivery
         }
