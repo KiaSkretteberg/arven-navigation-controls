@@ -85,11 +85,11 @@ struct DWM1001_Position dwm1001_request_position(void)
             error = read_value(0x40, dataBuff);
         } while(!error && !request_finish);
 
-        printf("\nread error state");
+        // printf("\nread error state");
 
         if(!error) 
         {
-            printf("\nno error");
+            // printf("\nno error");
             request_finish = 0;
             maxLength = 253;
             byteCount = 0;
@@ -98,11 +98,11 @@ struct DWM1001_Position dwm1001_request_position(void)
             {
                 error = read_value(0x41, dataBuff);
             } while(!error && !request_finish);
-            printf("\nread data");
+            // printf("\nread data");
 
             if(!error) 
             {
-                printf("\nno error");
+                // printf("\nno error");
                 coords.set = 1;
                 // first 4 bytes are x, next 4 are y, next 4 are z, last 1 is quality(?)
                 // bytes represent 32 bit integer (measuring mm)
@@ -135,7 +135,7 @@ int read_value(char expect_type, char * buff)
     while(uart_is_readable(DWM1001_UART_ID) && byteCount < maxLength + 2)
     {
         char c = uart_getc(DWM1001_UART_ID);
-        printf("\nread_value: %x", c);
+        // printf("\nread_value: %x", c);
         ++byteCount;
         if(byteCount == 1)
         {
@@ -165,6 +165,6 @@ long read_coord(char * buff, int startIdx)
     value += buff[startIdx+1]<<8;
     value += buff[startIdx+2]<<16;
     value += buff[startIdx+3]<<24;
-    printf("\nread_coord: %x", value);
+    // printf("\nread_coord: %x", value);
     return value;
 }

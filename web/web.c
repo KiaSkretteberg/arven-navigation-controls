@@ -16,7 +16,7 @@
 /* Global Variables                                                     */
 /************************************************************************/
 
-volatile struct Web_Request requests[3];
+volatile struct Web_Request requests[4];
 volatile char bodyBuff[1000];
 volatile char headerBuff[1000];
 httpc_connection_t settings;
@@ -130,10 +130,10 @@ int web_init(const char *ssid, const char *pass, const char *hostname,
     strcpy(requests[Web_RequestType_RetrieveDoseStats].body, "");
     strcpy(requests[Web_RequestType_RetrieveDoseStats].headers, "");
     // setup the get user location request
-    requests[Web_RequestType_RetrieveDoseStats].type = Web_RequestType_GetUserLocation;
-    requests[Web_RequestType_RetrieveDoseStats].active = 0;
-    strcpy(requests[Web_RequestType_RetrieveDoseStats].body, "");
-    strcpy(requests[Web_RequestType_RetrieveDoseStats].headers, "");
+    requests[Web_RequestType_GetUserLocation].type = Web_RequestType_GetUserLocation;
+    requests[Web_RequestType_GetUserLocation].active = 0;
+    strcpy(requests[Web_RequestType_GetUserLocation].body, "");
+    strcpy(requests[Web_RequestType_GetUserLocation].headers, "");
     return status;
 }
 
@@ -205,7 +205,7 @@ int web_response_check_schedule(void)
     Web_RequestType type = Web_RequestType_CheckSchedule;
     if(requests[type].active && requests[type].complete) 
     {
-        printf("\nrequest complete");
+        printf("\ncheck schedule request complete");
         char userId[20] = "";       // "UserID:############"
         char scheduleId[24] = "";   // "ScheduleID:############"
         char * chunk;
@@ -264,6 +264,7 @@ struct DWM1001_Position web_response_get_user_location(void)
     Web_RequestType type = Web_RequestType_GetUserLocation;
     if(requests[type].active && requests[type].complete) 
     {
+        printf("\nget user request complete");
         char xCoord[10] = "";       // "x:#######"
         char yCoord[10] = "";       // "y:#######"
         char zCoord[10] = "";       // "y:#######"
@@ -273,24 +274,21 @@ struct DWM1001_Position web_response_get_user_location(void)
         strcpy(xCoord, strtok(requests[type].body, PROPERTY_DELIM_STR));
         strcpy(yCoord, strtok(NULL, PROPERTY_DELIM_STR));
         strcpy(zCoord, strtok(NULL, PROPERTY_DELIM_STR));
-        printf(xCoord);
-        printf(yCoord);
-        printf(zCoord);
         
         // grab out the x value from the property/value pair
         chunk = strchr(xCoord, VALUE_DELIM);
         ++chunk;
-        position.x = atof(chunk);
+        position.x = atol(chunk);
 
         // grab out the y value from the property/value pair
         chunk = strchr(yCoord, VALUE_DELIM);
         ++chunk;
-        position.y = atof(chunk);
+        position.y = atol(chunk);
 
         // grab out the z value from the property/value pair
         chunk = strchr(zCoord, VALUE_DELIM);
         ++chunk;
-        position.z = atof(chunk);
+        position.z = atol(chunk);
 
         // reset the request so a new one can be made
         requests[type].active = 0;

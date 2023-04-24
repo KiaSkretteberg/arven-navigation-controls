@@ -64,8 +64,8 @@ const int STUCK_DURATION = 60000; //1 minute (60s ==> 60,000ms)
 // How long the weight sensor must be in the same state before it will transition between states
 const int WEIGHT_DURATION = 5000; // 5 seconds
 
-const int USER_REQUEST_DURATION = 500;
-const int ROBOT_REQUEST_DURATION = 10;
+const long USER_REQUEST_DURATION = 500000; // 500ms (in us)
+const long ROBOT_REQUEST_DURATION = 1000; // 1ms (in us)
 
 // monitor current state of motor so instructions are only sent for changes
 volatile MotionState currentRightMotorState = MotionState_ToBeDetermined;
@@ -98,6 +98,18 @@ int main() {
 
     // Navigating state variables
     struct AtmegaSensorValues sensorValues;
+
+    // initialize robot position
+    robotPosition.x = 0;
+    robotPosition.y = 0;
+    robotPosition.z = 0;
+    robotPosition.set = 0;
+
+    //initialize user position
+    userPosition.x = 0;
+    userPosition.y = 0;
+    userPosition.x = 0;
+    userPosition.set = 0;
     
     stdio_init_all();
 
@@ -166,10 +178,21 @@ int idle(void)
 
 NavigationResult navigating_to_user(struct AtmegaSensorValues sensorValues)
 {
-    // if(!userPosition.set) {
-    //     web_request_get_user_location();
-    //     userPosition = web_response_get_user_location();
-    // }
+    // get the user's position every 500ms
+    if(!userPosition.set || time_us_64() % USER_REQUEST_DURATION == 0) {
+        web_request_get_user_location();
+    }
+    struct DWM1001_Position position = web_response_get_user_location();
+
+    if(position.set)
+    {
+        userPosition.x = position.x;
+        userPosition.y = position.y;
+        userPosition.z = position.z;
+        userPosition.set = position.set;
+        
+        printf("\nuserPosition: x:%d y:%d z:%d", userPosition.x, userPosition.y, userPosition.z);
+    }
 
     return navigate(sensorValues, userPosition);
 }
@@ -273,16 +296,19 @@ NavigationResult navigate(struct AtmegaSensorValues sensorValues, struct DWM1001
         //reset the stopped snapshot so it can be reinitialized later
         stoppedSnapshot = 0;
         
-        // TODO: request position less frequently
-        struct DWM1001_Position position = dwm1001_request_position();
-
-        if(position.set)
+        if(!robotPosition.set || time_us_64() % ROBOT_REQUEST_DURATION == 0)
         {
-            robotPosition.x = position.x;
-            robotPosition.y = position.y;
-            robotPosition.z = position.z;
+            struct DWM1001_Position position = dwm1001_request_position();
 
-            printf("\nx:%f y:%f z:%f", robotPosition.x, robotPosition.y, robotPosition.z);
+            if(position.set)
+            {
+                robotPosition.x = position.x;
+                robotPosition.y = position.y;
+                robotPosition.z = position.z;
+                robotPosition.set = position.set;
+
+                printf("\nrobotPosition: x:%d y:%d z:%d", robotPosition.x, robotPosition.y, robotPosition.z);
+            }
         }
         
         if(robotPosition.set)
@@ -387,16 +413,16 @@ MotionState interpret_sensors(struct AtmegaSensorValues sensorValues)
             printf("\nno obstacles");
             action = MotionState_Forward; 
         } 
-        // obstacle directly in front, and to the left, so turn right
-        else if(obstacleCentre && obstacleLeft && !obstacleRight)
+        // obstacle to the left, so turn right (regardless of front)
+        else if(obstacleLeft && !obstacleRight)
         {
-             printf("\nfront and left obstacles");
+             printf("\nleft obstacle");
             action = MotionState_TurnRight;
         }
-        // obstacle directly in front, and to the right, so turn left
-        else if (obstacleCentre && obstacleRight && !obstacleLeft)
+        // obstacle to the right, so turn left (regardless of front)
+        else if (obstacleRight && !obstacleLeft)
         {
-            printf("\nfront and right obstacles");
+            printf("\nright obstacle");
             action = MotionState_TurnLeft;
         }
         // just an obstacle in front, so turn towards the destination
