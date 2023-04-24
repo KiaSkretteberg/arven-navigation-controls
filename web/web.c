@@ -145,6 +145,7 @@ void web_request(char * uriParams, Web_RequestType type)
         requests[type].active = 1;
         printf("\nMake request to: ");
         printf(strcat(uri, uriParams));
+        printf("\nend");
         err_t err = httpc_get_file_dns(
                 WEB_CLIENT_SERVER,
                 WEB_CLIENT_PORT,

@@ -64,9 +64,15 @@ const int STUCK_DURATION = 60000; //1 minute (60s ==> 60,000ms)
 // How long the weight sensor must be in the same state before it will transition between states
 const int WEIGHT_DURATION = 5000; // 5 seconds
 
+const int USER_REQUEST_DURATION = 500;
+const int ROBOT_REQUEST_DURATION = 10;
+
 // monitor current state of motor so instructions are only sent for changes
 volatile MotionState currentRightMotorState = MotionState_ToBeDetermined;
 volatile MotionState currentLeftMotorState = MotionState_ToBeDetermined;
+
+volatile struct DWM1001_Position userPosition;
+volatile struct DWM1001_Position robotPosition;
 
 /************************************************************************/
 /* Local Definitions (private functions)                                */
@@ -160,17 +166,10 @@ int idle(void)
 
 NavigationResult navigating_to_user(struct AtmegaSensorValues sensorValues)
 {
-    static struct DWM1001_Position userPosition;
-    //TODO: How to set "set" only the first time?
-    userPosition.set = 0;
-    // //TODO: check user's position periodically (every 500ms)
     // if(!userPosition.set) {
     //     web_request_get_user_location();
     //     userPosition = web_response_get_user_location();
     // }
-
-    // printf("\npositionSet: %i", position.set);
-    // printf("\nuserPositionSet: %i", userPosition.set);
 
     return navigate(sensorValues, userPosition);
 }
@@ -274,54 +273,66 @@ NavigationResult navigate(struct AtmegaSensorValues sensorValues, struct DWM1001
         //reset the stopped snapshot so it can be reinitialized later
         stoppedSnapshot = 0;
         
-        struct DWM1001_Position robotPosition = dwm1001_request_position();
-        printf("\nx:%f y:%f z:%f", robotPosition.x, robotPosition.y, robotPosition.z);
+        // TODO: request position less frequently
+        struct DWM1001_Position position = dwm1001_request_position();
+
+        if(position.set)
+        {
+            robotPosition.x = position.x;
+            robotPosition.y = position.y;
+            robotPosition.z = position.z;
+
+            printf("\nx:%f y:%f z:%f", robotPosition.x, robotPosition.y, robotPosition.z);
+        }
         
-        long xDiff = robotPosition.x - destinationPosition.x;
-        long yDiff = robotPosition.y - destinationPosition.y;
-        //long zDiff = robotPosition.z - destinationPosition.z;
-        //basically we would want to find the difference between the two points, so
-        //we would take the absolute value of the difference between the two since we
-        //don't care about magnitude when it comes to how close they are to each other
-        // if (robotPosition.set && destinationPosition.set && 
-        //    abs(xDiff) >= 20 || abs(yDiff) >= 20)
-        // {
-            switch(state)
-            {
-                case MotionState_Reverse:
-                case MotionState_TurnRight:
-                case MotionState_TurnLeft:
-                    act_on_motion_state(state);
-                    break;
-                case MotionState_ToBeDetermined:
-                    //TODO: Decide what this should do
-                    if(xDiff < 0){
-                        turn_right();
-                    } else{
-                        turn_left();
-                    }   
-                case MotionState_Forward: 
-                    // we got further away, so turn around
-                    if(xDiff > lastXDiff) {
-                        // turn right for 500 ms
-                        turn_right();
-                        sleep_ms(500);
-                        // then go forward
+        if(robotPosition.set)
+        {
+            long xDiff = robotPosition.x - destinationPosition.x;
+            long yDiff = robotPosition.y - destinationPosition.y;
+            //long zDiff = robotPosition.z - destinationPosition.z;
+            //basically we would want to find the difference between the two points, so
+            //we would take the absolute value of the difference between the two since we
+            //don't care about magnitude when it comes to how close they are to each other
+            // if (robotPosition.set && destinationPosition.set && 
+            //    abs(xDiff) >= 20 || abs(yDiff) >= 20)
+            // {
+                switch(state)
+                {
+                    case MotionState_Reverse:
+                    case MotionState_TurnRight:
+                    case MotionState_TurnLeft:
                         act_on_motion_state(state);
-                    // we got closer, so keep going
-                    } else if(xDiff < lastXDiff ) {
-                        act_on_motion_state(state);
-                    }  //TODO: React to y diff     
-                    break;
-            }
-            lastXDiff = xDiff;
-            lastYDiff = yDiff;
-        // }
-        // else
-        // {
-        //     result = NavigationResult_Complete;
-        //     stop();
-        // }
+                        break;
+                    case MotionState_ToBeDetermined:
+                        //TODO: Decide what this should do
+                        if(xDiff < 0){
+                            turn_right();
+                        } else{
+                            turn_left();
+                        }   
+                    case MotionState_Forward: 
+                        // we got further away, so turn around
+                        if(xDiff > lastXDiff) {
+                            // turn right for 500 ms
+                            turn_right();
+                            sleep_ms(500);
+                            // then go forward
+                            act_on_motion_state(state);
+                        // we got closer, so keep going
+                        } else if(xDiff < lastXDiff ) {
+                            act_on_motion_state(state);
+                        }  //TODO: React to y diff     
+                        break;
+                }
+                lastXDiff = xDiff;
+                lastYDiff = yDiff;
+            // }
+            // else
+            // {
+            //     result = NavigationResult_Complete;
+            //     stop();
+            // }
+        }
     }   
     return result;
 }

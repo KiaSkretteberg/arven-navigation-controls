@@ -10,6 +10,15 @@
 #include "dwm1001.h"
 #include <string.h>
 
+volatile int request_begin = 0;
+volatile int request_finish = 0;
+volatile char dataBuff[200] = "";
+
+volatile unsigned char byteCount = 0;
+// max number of bytes to be read, at most is 253
+volatile unsigned char maxLength = 253;
+    
+
 /************************************************************************/
 /* Local Definitions (private functions)                                */
 /************************************************************************/
@@ -50,51 +59,67 @@ void dwm1001_init_communication(void)
 
 struct DWM1001_Position dwm1001_request_position(void)
 {
-    char errBuff[20];
-    char dataBuff[200];
-    char data2Buff[200];
-    strcpy(errBuff, "");
-    strcpy(dataBuff, "");
-    strcpy(data2Buff, "");
     char error;
     struct DWM1001_Position coords;
     coords.x = 0;
     coords.y = 0;
     coords.z = 0;
     coords.set = 0;
-    // dwm_loc_get      see 5.3.10
-    uart_putc_raw(DWM1001_UART_ID, 0x02);
-    uart_putc_raw(DWM1001_UART_ID, 0x00);
 
-    //check if there's an error in the command
-    error = read_value(0x40, errBuff);
-    //TODO: if buff is not empty, that's an error as well
-    if(!error) 
+    if(!request_begin)
     {
-        // get the device's position
-        error = read_value(0x41, dataBuff);
+        strcpy(dataBuff, "");
+        request_begin = 1;
+        // dwm_loc_get      see 5.3.10
+        uart_putc_raw(DWM1001_UART_ID, 0x02);
+        uart_putc_raw(DWM1001_UART_ID, 0x00);
+        sleep_us(1);
+    }
+    else
+    {
+        maxLength = 253;
+        byteCount = 0;
+        //check if there's an error in the command
+        do
+        {
+            error = read_value(0x40, dataBuff);
+        } while(!error && !request_finish);
+
+        printf("\nread error state");
 
         if(!error) 
         {
             printf("\nno error");
-            coords.set = 1;
-            // first 4 bytes are x, next 4 are y, next 4 are z, last 1 is quality(?)
-            // bytes represent 32 bit integer (measuring mm)
-            // example: 0x08 0x00 0x00 0x00    0x0B 0xFF 0xFF 0xFF    0x4C 0x00 0x00 0x00    0x00
-            // bytes come in reverse order (LSByte first)
-            // ~ x = -0.06, y = -0.03, z = 0.08
+            request_finish = 0;
+            maxLength = 253;
+            byteCount = 0;
+            // get the device's position
+            do
+            {
+                error = read_value(0x41, dataBuff);
+            } while(!error && !request_finish);
+            printf("\nread data");
 
-            // Current expected values:
-            // x = 2.25m, y = 0, z = 0
-            coords.x = read_coord(dataBuff, 0);
-            coords.y = read_coord(dataBuff, 4);
-            coords.z = read_coord(dataBuff, 8);
-            // get the position to the anchors (not needed if home is 0,0,0 but may be beneficial)
-            
-            // error = read_value(0x49, data2Buff);
+            if(!error) 
+            {
+                printf("\nno error");
+                coords.set = 1;
+                // first 4 bytes are x, next 4 are y, next 4 are z, last 1 is quality(?)
+                // bytes represent 32 bit integer (measuring mm)
+                // example: 0x08 0x00 0x00 0x00    0x0B 0xFF 0xFF 0xFF    0x4C 0x00 0x00 0x00    0x00
+                // bytes come in reverse order (LSByte first)
+                // ~ x = -0.06, y = -0.03, z = 0.08
+
+                // Current expected values:
+                // x = 2.25m, y = 0, z = 0
+                coords.x = read_coord(dataBuff, 0);
+                coords.y = read_coord(dataBuff, 4);
+                coords.z = read_coord(dataBuff, 8);
+            }
         }
+        request_begin = 0;
     }
-    
+        
     return coords;
 }
 
@@ -104,24 +129,22 @@ struct DWM1001_Position dwm1001_request_position(void)
 
 int read_value(char expect_type, char * buff)
 {
-    unsigned char count = 0;
-    // max number of bytes to be read, at most is 253
-    unsigned char maxLength = 253;
+    while(!uart_is_readable(DWM1001_UART_ID));
     
     // while there's data to read and we haven't read the end of this value (read all bytes indicated in value)
-    while(uart_is_readable(DWM1001_UART_ID) && count < maxLength + 2)
+    while(uart_is_readable(DWM1001_UART_ID) && byteCount < maxLength + 2)
     {
         char c = uart_getc(DWM1001_UART_ID);
         printf("\nread_value: %x", c);
-        ++count;
-        if(count == 1)
+        ++byteCount;
+        if(byteCount == 1)
         {
             // if the type doesn't match the expected type, throw an error!
             if(c != expect_type)
                 return -1;
         }
         // grab the length of how many bytes to receive next
-        else if(count == 2)
+        else if(byteCount == 2)
         {
             maxLength = c;
         }
@@ -129,9 +152,9 @@ int read_value(char expect_type, char * buff)
         {
             *buff = c;
             ++buff;
+            if(byteCount == maxLength + 2) request_finish = 1;
         }
     }
-    printf("\nread_value final: %x", buff);
 
     return 0;
 }
