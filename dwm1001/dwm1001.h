@@ -6,9 +6,9 @@
  * Created: 2023-03-20
  * Author: Kia Skretteberg
  */
-
 #ifndef DWM1001H
 #define DWM1001H
+
 
 // We are using pins 0 and 1, but see the GPIO function select table in the
 // datasheet for information on which other pins can be used.
