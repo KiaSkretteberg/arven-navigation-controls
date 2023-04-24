@@ -204,6 +204,7 @@ int web_response_check_schedule(void)
     Web_RequestType type = Web_RequestType_CheckSchedule;
     if(requests[type].active && requests[type].complete) 
     {
+        printf("\nrequest complete");
         char userId[20] = "";       // "UserID:############"
         char scheduleId[24] = "";   // "ScheduleID:############"
         char * chunk;
@@ -229,6 +230,11 @@ int web_response_check_schedule(void)
         strcpy(requests[type].headers, "");
         strcpy(requests[type].body, "");
         requests[type].complete = 0;
+
+        if(scheduleIdValue == -1)
+        {
+            printf("\nno schedule");
+        }
 
         // return the schedule id
         return scheduleIdValue;

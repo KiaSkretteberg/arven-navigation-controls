@@ -122,6 +122,7 @@ int main() {
             case RobotState_Idle:
                 scheduleId = idle();
                 if(scheduleId != -1)
+                    // robotState = RobotState_DeliveringPayload;
                     robotState = RobotState_NavigatingToUser;
                 break;
             case RobotState_NavigatingToUser:
@@ -253,6 +254,8 @@ NavigationResult navigate(struct AtmegaSensorValues sensorValues, struct DWM1001
 {
     NavigationResult result = NavigationResult_Incomplete;
     static uint64_t stoppedSnapshot = 0;
+    static long lastXDiff = 0;
+    static long lastYDiff = 0;
     
     MotionState state = interpret_sensors(sensorValues);
     if(state == MotionState_Stop)
@@ -280,12 +283,11 @@ NavigationResult navigate(struct AtmegaSensorValues sensorValues, struct DWM1001
         //basically we would want to find the difference between the two points, so
         //we would take the absolute value of the difference between the two since we
         //don't care about magnitude when it comes to how close they are to each other
-        //if (robotPosition.set && destinationPosition.set && 
+        // if (robotPosition.set && destinationPosition.set && 
         //    abs(xDiff) >= 20 || abs(yDiff) >= 20)
         // {
             switch(state)
             {
-                case MotionState_Forward:
                 case MotionState_Reverse:
                 case MotionState_TurnRight:
                 case MotionState_TurnLeft:
@@ -297,9 +299,23 @@ NavigationResult navigate(struct AtmegaSensorValues sensorValues, struct DWM1001
                         turn_right();
                     } else{
                         turn_left();
-                    }                   
+                    }   
+                case MotionState_Forward: 
+                    // we got further away, so turn around
+                    if(xDiff > lastXDiff) {
+                        // turn right for 500 ms
+                        turn_right();
+                        sleep_ms(500);
+                        // then go forward
+                        act_on_motion_state(state);
+                    // we got closer, so keep going
+                    } else if(xDiff < lastXDiff ) {
+                        act_on_motion_state(state);
+                    }  //TODO: React to y diff     
                     break;
             }
+            lastXDiff = xDiff;
+            lastYDiff = yDiff;
         // }
         // else
         // {
@@ -439,7 +455,7 @@ void go_forward()
     {
         printf("\ngo forward left");
         motor_forward(Motor_FL, SPEED); 
-        currentRightMotorState = MotionState_Forward;
+        currentLeftMotorState = MotionState_Forward;
     }
 }
 
@@ -455,7 +471,7 @@ void go_backward()
     {
         printf("\ngo backward left");
         motor_reverse(Motor_FL, SPEED); 
-        currentRightMotorState = MotionState_Reverse;
+        currentLeftMotorState = MotionState_Reverse;
     }
 }
 
@@ -471,7 +487,7 @@ void stop()
     {
         printf("\nstop left");
         motor_stop(Motor_FL); 
-        currentRightMotorState = MotionState_Stop;
+        currentLeftMotorState = MotionState_Stop;
     }
 }
 
