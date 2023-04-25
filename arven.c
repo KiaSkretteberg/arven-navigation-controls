@@ -65,7 +65,7 @@ const int STUCK_DURATION = 60000; //1 minute (60s ==> 60,000ms)
 const int WEIGHT_DURATION = 5000; // 5 seconds
 
 const long USER_REQUEST_DURATION = 500000; // 500ms (in us)
-const long ROBOT_REQUEST_DURATION = 20000; // 20ms (in us)
+const long ROBOT_REQUEST_DURATION = 20000; // 20ms (in us) (the robot only updates every 100ms but we want to ensure we get the new value fairly accurately)
 
 // monitor current state of motor so instructions are only sent for changes
 volatile MotionState currentRightMotorState = MotionState_ToBeDetermined;
@@ -73,6 +73,8 @@ volatile MotionState currentLeftMotorState = MotionState_ToBeDetermined;
 
 volatile struct DWM1001_Position userPosition;
 volatile struct DWM1001_Position robotPosition;
+
+volatile long next_robot_request = ROBOT_REQUEST_DURATION;
 
 /************************************************************************/
 /* Local Definitions (private functions)                                */
@@ -296,8 +298,11 @@ NavigationResult navigate(struct AtmegaSensorValues sensorValues, struct DWM1001
         //reset the stopped snapshot so it can be reinitialized later
         stoppedSnapshot = 0;
         
-        if(!robotPosition.set || time_us_64() % ROBOT_REQUEST_DURATION == 0)
+        if(!robotPosition.set || time_us_64() >= next_robot_request)
         {
+            // rearm to request again
+            next_robot_request = time_us_64() + ROBOT_REQUEST_DURATION;
+
             struct DWM1001_Position position = dwm1001_request_position();
 
             if(position.set)
@@ -311,17 +316,18 @@ NavigationResult navigate(struct AtmegaSensorValues sensorValues, struct DWM1001
             }
         }
         
-        if(robotPosition.set)
+        if(robotPosition.set && destinationPosition.set)
         {
             long xDiff = robotPosition.x - destinationPosition.x;
             long yDiff = robotPosition.y - destinationPosition.y;
+            printf("\nxDiff: %d, yDiff: %d", xDiff, yDiff);
             //long zDiff = robotPosition.z - destinationPosition.z;
             //basically we would want to find the difference between the two points, so
             //we would take the absolute value of the difference between the two since we
             //don't care about magnitude when it comes to how close they are to each other
-            // if (robotPosition.set && destinationPosition.set && 
-            //    abs(xDiff) >= 20 || abs(yDiff) >= 20)
-            // {
+            if (robotPosition.set && destinationPosition.set && 
+               abs(xDiff) >= 300 || abs(yDiff) >= 300)
+            {
                 switch(state)
                 {
                     case MotionState_Reverse:
@@ -339,25 +345,29 @@ NavigationResult navigate(struct AtmegaSensorValues sensorValues, struct DWM1001
                     case MotionState_Forward: 
                         // we got further away, so turn around
                         if(xDiff > lastXDiff) {
-                            // turn right for 500 ms
+                            // turn right for 5 ms
                             turn_right();
-                            sleep_ms(500);
+                            sleep_ms(5);
                             // then go forward
                             act_on_motion_state(state);
                         // we got closer, so keep going
                         } else if(xDiff < lastXDiff ) {
                             act_on_motion_state(state);
-                        }  //TODO: React to y diff     
+                        }  //TODO: React to y diff 
+                        else
+                        {
+                            act_on_motion_state(state);
+                        }    
                         break;
                 }
                 lastXDiff = xDiff;
                 lastYDiff = yDiff;
-            // }
-            // else
-            // {
-            //     result = NavigationResult_Complete;
-            //     stop();
-            // }
+            }
+            else
+            {
+                result = NavigationResult_Complete;
+                stop();
+            }
         }
     }   
     return result;
